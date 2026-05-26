@@ -7,8 +7,8 @@ test_csv: "./data/processed/splits_cer90/test.csv"
 
 # Model
 # model_id: "facebook/mms-1b-all"
-model_id: "facebook/wav2vec2-xlsr-53-espeak-cv-ft"
-# model_id: "openai/whisper-large-v3"
+# model_id: "facebook/wav2vec2-xlsr-53-espeak-cv-ft"
+model_id: "openai/whisper-large-v3"
 # model_id: "inqVine/pronounceai-g2p"
 # model_id: "mrfakename/Ministral-3-3B-Base-2512-Llamafied-TextOnly"
 # model_id: "microsoft/VibeVoice"

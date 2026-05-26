@@ -1,9 +1,9 @@
 # Model
-model_id_or_path: "./data/processed/asr/finetune/mms-1b-all_20260522_153638/best"
+model_id_or_path: "./data/processed/asr/finetune/wav2vec2-xlsr-53-espeak-cv-ft_20260525_142300/best"
 
 # Data
 metadata_delimiter: ","
-metadata: "./data/processed/splits/test.csv"
+metadata: "./data/processed/splits_cer90/test.csv"
 utt_root: "./data/processed"
 
 # Output

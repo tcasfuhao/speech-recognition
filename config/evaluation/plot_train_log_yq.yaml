@@ -1,5 +1,5 @@
-log_path: "./data/processed/asr/finetune/mms-1b-all_20260522_153638/train_log.tsv"
+log_path: "./data/processed/asr/finetune/wav2vec2-xlsr-53-espeak-cv-ft_20260525_142300/train_log.tsv"
 model_id: "mms-1b-all"
-out_dir: "./data/processed/asr/finetune/mms-1b-all_20260522_153638/split_seed_42"
+out_dir: "./data/processed/asr/finetune/wav2vec2-xlsr-53-espeak-cv-ft_20260525_142300/split_seed_42"
 x_col: "step"
 show: false
