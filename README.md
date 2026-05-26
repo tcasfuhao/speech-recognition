@@ -77,8 +77,10 @@ data/processed/
 
 ## 3) Fine-tune Wav2Vec2
 ```bash
-python -m src.finetune.train_ctc --config config/finetune/finetune_yq_cer90.yaml
+python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
 ```
+python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq.yaml
+python -m src.finetune.train_ctc --config config/finetune/seq2seq/finetune_yq_cer90.yaml
 
 Outputs:
 ```
