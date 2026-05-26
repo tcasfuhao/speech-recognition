@@ -1,0 +1,14 @@
+# Predictions from transcribe.py
+preds: "./data/processed/asr/inference/best_20260522_152619/preds-best.csv"
+
+# Output directory
+out_dir: "./data/processed/asr/finetune/mms-1b-all_20260522_153638/split_seed_42"
+
+# CER options
+strip_punct: false
+empty_ref_policy: "skip"
+
+# Optional grouping (examples)
+# group_by:
+#   - speaker_id
+#   - recording_id

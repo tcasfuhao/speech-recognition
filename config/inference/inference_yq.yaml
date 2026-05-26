@@ -1,0 +1,15 @@
+# Model
+model_id_or_path: "./data/processed/asr/finetune/mms-1b-all_20260522_153638/best"
+
+# Data
+metadata_delimiter: ","
+metadata: "./data/processed/splits/test.csv"
+utt_root: "./data/processed"
+
+# Output
+out_dir: "./data/processed/asr/inference"
+
+# LM (optional)
+# lm_path: null
+# lm_weight: 0.5
+# beam_width: 50
