@@ -1,0 +1,32 @@
+# Core ML
+accelerate==1.13.0
+safetensors==0.7.0
+tokenizers==0.22.2
+torch==2.10.0
+torchaudio==2.10.0
+transformers==5.2.0
+
+# HuggingFace ecosystem
+huggingface-hub==1.5.0
+
+# Data
+numpy==1.26.4
+pandas==2.3.3
+scipy==1.15.3
+
+# Audio
+soundfile==0.13.1
+pydub==0.25.1
+pympi-ling==1.70.2
+torchcodec==0.10
+
+# Plotting / analysis
+matplotlib==3.10.8
+seaborn==0.13.2
+
+# CLI
+tqdm==4.67.3
+typer==0.24.1
+
+# Config
+pyyaml==6.0.3
