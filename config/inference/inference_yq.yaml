@@ -1,13 +1,14 @@
 # Model
-model_id_or_path: "./data/processed/asr/finetune_seq2seq/ipa-whisper-base_20260526_152906/best"
+model_id_or_path: "./data/processed/asr/finetune/mms-1b-all_20260522_153638/best"
 
 # Data
 metadata_delimiter: ","
-metadata: "./data/processed/splits_cer90/test.csv"
+metadata: "./data/processed/metadata.csv"
 utt_root: "./data/processed"
 
 # Output
-out_dir: "./data/processed/asr/finetune_seq2seq/ipa-whisper-base_20260526_152906/split_seed_42"
+# out_dir: "./data/processed/asr/finetune/mms-1b-all_20260522_153638/split_seed_42"
+out_dir: "./data/processed/metadata_rated.csv"
 
 # LM (optional)
 # lm_path: null

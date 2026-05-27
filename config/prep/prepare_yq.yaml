@@ -12,11 +12,13 @@ max_dur_ms: 30000
 
 # Text normalization
 lowercase: true
-strip_punct: false
-keep_apostrophe: true
+strip_punct: true
+keep_apostrophe: false
 remove_bracketed: true
 remove_diacritics: false
 collapse_whitespace: true
+normalize_quotes: true
+map_numeric_speaker_codes: true
 
 # Session ID mapping (used in metadata + optional group split)
 session_id_from: "parent_dir"
