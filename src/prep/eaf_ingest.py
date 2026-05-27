@@ -34,6 +34,20 @@ class IngestConfig:
     collapse_whitespace: bool = True
     session_id_from: str = "parent_dir"  # "parent_dir" | "recording_id"
     audio_exts: Tuple[str, ...] = tuple(DEFAULT_AUDIO_EXTS)
+    normalize_quotes: bool = True
+    remove_hash_and_question: bool = True
+    map_numeric_speaker_codes: bool = False
+
+_SINGLE_CHAR_TRANSLATION = str.maketrans(
+    {
+        "’": "'",
+        "‘": "'",
+        "`": "'",
+        "´": "'",
+        "“": "''",
+        "”": "''",
+    }
+)
 
 
 def normalize_text(
@@ -45,19 +59,33 @@ def normalize_text(
     remove_bracketed: bool,
     remove_diacritics: bool,
     collapse_whitespace: bool,
+    normalize_quotes: bool,
+    remove_hash_and_question: bool,
+    map_numeric_speaker_codes: bool,
+
 ) -> str:
     if s is None:
         return ""
     s = str(s).strip()
+
     if lowercase:
         s = s.lower()
-
-    s = s.replace("’", "'").replace("‘", "'").replace("`", "'").replace("´", "'")
+    
+    if normalize_quotes:
+        s = s.translate(_SINGLE_CHAR_TRANSLATION)
 
     if remove_bracketed:
         s = re.sub(r"\[[^\]]*\]", " ", s)
         s = re.sub(r"\([^)]*\)", " ", s)
         s = re.sub(r"[\[\]\(\)]", " ", s)
+
+    if remove_hash_and_question:
+        s = s.replace("#", "")
+        s = s.replace("?", "")
+    
+    if map_numeric_speaker_codes:
+        s = s.replace("33", "M").replace("35", "R").replace("55", "H").replace("53", "F")
+
 
     if remove_diacritics:
         s = unicodedata.normalize("NFD", s)
