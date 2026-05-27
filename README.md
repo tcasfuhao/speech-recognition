@@ -81,6 +81,7 @@ python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.
 ```
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq.yaml
 python -m src.finetune.train_ctc --config config/finetune/seq2seq/finetune_yq_cer90.yaml
+python -m src.finetune.train_seq2seq --config config/finetune/seq2seq/finetune_yq_cer90.yaml
 
 Outputs:
 ```
@@ -95,8 +96,10 @@ data/processed/asr/finetune/<run_name>/
 ### Training on CER-filtered data (top 10% noisiest removed)
 This uses `data/processed/splits_cer90/` and `metadata_cer90.csv`:
 ```bash
-python -m src.finetune.train_ctc --config config/finetune/finetune_yq_cer90.yaml
+python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
 ```
+python -m src.finetune.train_seq2seq --config config/finetune/seq2seq/finetune_yq_cer90.yaml
+
 
 ## 4) Inference (batch transcription)
 ```bash
