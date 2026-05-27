@@ -228,6 +228,9 @@ def main():
         raise ValueError("log_path must be provided via CLI or config file")
 
     log_path = Path(args.log_path).expanduser()
+    if args.model_id is None:
+        args.model_id = log_path.parent.name
+
     if args.out_dir:
         out_dir = Path(args.out_dir).expanduser()
     else:
