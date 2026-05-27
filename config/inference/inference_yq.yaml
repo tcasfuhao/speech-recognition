@@ -1,5 +1,5 @@
 # Model
-model_id_or_path: "./data/processed/asr/finetune/wav2vec2-xlsr-53-espeak-cv-ft_20260525_142300/best"
+model_id_or_path: "./data/processed/asr/finetune_seq2seq/ipa-whisper-base_20260526_152906/best"
 
 # Data
 metadata_delimiter: ","
@@ -7,7 +7,7 @@ metadata: "./data/processed/splits_cer90/test.csv"
 utt_root: "./data/processed"
 
 # Output
-out_dir: "./data/processed/asr/inference"
+out_dir: "./data/processed/asr/finetune_seq2seq/ipa-whisper-base_20260526_152906/split_seed_42"
 
 # LM (optional)
 # lm_path: null

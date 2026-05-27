@@ -6,11 +6,13 @@ dev_csv: "./data/processed/splits_cer90/dev.csv"
 test_csv: "./data/processed/splits_cer90/test.csv"
 
 # Model
-# model_id: "facebook/mms-1b-all"
-# model_id: "facebook/wav2vec2-xlsr-53-espeak-cv-ft"
-## model_id: "google/byt5-small"
+model_id: "openai/whisper-large-v3"
+# model_id: "ibm-granite/granite-4.0-1b-speech"
+# model_id: "neurlang/ipa-whisper-base"
+# model_id: "inqVine/pronounceai-g2p"
 # model_id: "mrfakename/Ministral-3-3B-Base-2512-Llamafied-TextOnly"
 # model_id: "microsoft/VibeVoice"
+# model_id: "ibm-granite/granite-4.0-1b-speech"
 # model_id: "vinai/xphonebert-base"
 
 # Training
@@ -22,7 +24,15 @@ epochs: 25
 lr: 0.00005
 patience: 5
 warmup_steps: 100
-fp16: true
+fp16: false
+bf16: true
+# Optional: set `language` to enable forced decoder prompts (Whisper processors)
+# e.g. language: "zh" or language: "en"
+# language: "IPA"
+
+# Seq2Seq / generation settings
+task: "transcribe"
+generation_max_length: 256
 
 # Output
-out_dir: "./data/processed/asr/finetune"
+out_dir: "./data/processed/asr/finetune_seq2seq"
