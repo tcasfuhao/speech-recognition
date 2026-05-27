@@ -86,7 +86,7 @@ class SpeechSeq2SeqDataset(Dataset):
 class DataCollatorSpeechSeq2Seq:
     processor: AutoProcessor
     padding: bool = True
-    input_dtype: Optional[torch.dtype] = None
+    input_dtype: torch.dtype = torch.float32
 
     def _max_input_length(self) -> Optional[int]:
         feature_extractor = self.processor.feature_extractor
@@ -111,8 +111,7 @@ class DataCollatorSpeechSeq2Seq:
             return_attention_mask=True,
         )
 
-        if self.input_dtype is not None:
-            batch["input_features"] = batch["input_features"].to(self.input_dtype)
+        batch["input_features"] = batch["input_features"].to(self.input_dtype)
 
         labels_batch = self.processor.tokenizer(
             texts,
@@ -209,6 +208,14 @@ def maybe_set_generation_prompt(model, processor, language: Optional[str], task:
         model.config.language = language
     if hasattr(model.config, "task"):
         model.config.task = task
+
+
+def _get_model_torch_dtype(args) -> Optional[torch.dtype]:
+    if getattr(args, "bf16", False):
+        return torch.bfloat16
+    if getattr(args, "fp16", False):
+        return torch.float16
+    return None
 
 
 def main():
@@ -330,6 +337,7 @@ def main():
     processor = AutoProcessor.from_pretrained(args.model_id)
     model = AutoModelForSpeechSeq2Seq.from_pretrained(
         args.model_id,
+        torch_dtype=_get_model_torch_dtype(args),
         low_cpu_mem_usage=True,
     )
 
