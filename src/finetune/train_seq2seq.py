@@ -86,6 +86,11 @@ class SpeechSeq2SeqDataset(Dataset):
 class DataCollatorSpeechSeq2Seq:
     processor: AutoProcessor
     padding: bool = True
+    input_dtype: Optional[torch.dtype] = None
+
+    def _max_input_length(self) -> Optional[int]:
+        feature_extractor = self.processor.feature_extractor
+        return getattr(feature_extractor, "n_samples", None)
 
     def __call__(self, features: List[dict]):
         features = [f for f in features if f is not None]
@@ -95,12 +100,19 @@ class DataCollatorSpeechSeq2Seq:
         audio = [f["audio"].numpy() for f in features]
         texts = [f["text"] for f in features]
 
+        max_input_length = self._max_input_length()
         batch = self.processor.feature_extractor(
             audio,
             sampling_rate=16000,
             return_tensors="pt",
-            padding=self.padding,
+            padding="max_length" if max_input_length is not None else self.padding,
+            max_length=max_input_length,
+            truncation=True,
+            return_attention_mask=True,
         )
+
+        if self.input_dtype is not None:
+            batch["input_features"] = batch["input_features"].to(self.input_dtype)
 
         labels_batch = self.processor.tokenizer(
             texts,
@@ -185,18 +197,18 @@ def maybe_set_generation_prompt(model, processor, language: Optional[str], task:
     if not language:
         return
 
-    if hasattr(processor, "get_decoder_prompt_ids"):
-        try:
-            forced_decoder_ids = processor.get_decoder_prompt_ids(
-                language=language,
-                task=task,
-            )
-        except TypeError:
-            forced_decoder_ids = processor.get_decoder_prompt_ids(language, task)
+    tokenizer = getattr(processor, "tokenizer", None)
+    if tokenizer is not None and hasattr(tokenizer, "set_prefix_tokens"):
+        tokenizer.set_prefix_tokens(language=language, task=task)
 
-        model.generation_config.forced_decoder_ids = forced_decoder_ids
-        if hasattr(model.config, "forced_decoder_ids"):
-            model.config.forced_decoder_ids = forced_decoder_ids
+    if hasattr(model.generation_config, "language"):
+        model.generation_config.language = language
+    if hasattr(model.generation_config, "task"):
+        model.generation_config.task = task
+    if hasattr(model.config, "language"):
+        model.config.language = language
+    if hasattr(model.config, "task"):
+        model.config.task = task
 
 
 def main():
@@ -329,14 +341,17 @@ def main():
         model.freeze_feature_encoder()
 
     model.config.use_cache = False
-    if hasattr(model.generation_config, "max_new_tokens"):
-        model.generation_config.max_new_tokens = args.generation_max_length
+
+    input_dtype = torch.bfloat16 if args.bf16 else torch.float16 if args.fp16 else None
 
     train_ds = SpeechSeq2SeqDataset(train_df, args.audio_root, path_col, text_col)
     dev_ds = SpeechSeq2SeqDataset(dev_df, args.audio_root, path_col, text_col)
     test_ds = SpeechSeq2SeqDataset(test_df, args.audio_root, path_col, text_col)
 
-    collator = DataCollatorSpeechSeq2Seq(processor=processor)
+    collator = DataCollatorSpeechSeq2Seq(
+        processor=processor,
+        input_dtype=input_dtype,
+    )
 
     train_args = Seq2SeqTrainingArguments(
         output_dir=str(out_dir / "checkpoints"),
