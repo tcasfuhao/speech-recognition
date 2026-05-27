@@ -75,10 +75,13 @@ data/processed/
    └─ split_summary.json
 ```
 
+Note the cleaner removes all punctuation marks, as well hashtag symbols that were present in the original transcription 
+
 ## 3) Fine-tune Wav2Vec2
 ```bash
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
 ```
+
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq.yaml
 python -m src.finetune.train_ctc --config config/finetune/seq2seq/finetune_yq_cer90.yaml
 python -m src.finetune.train_seq2seq --config config/finetune/seq2seq/finetune_yq_cer90.yaml
