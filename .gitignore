@@ -1,4 +1,3 @@
-!.gitkeep
-data
+/data/*
 __pycache__
-!.gitkeep
+!data/raw/.gitkeep
