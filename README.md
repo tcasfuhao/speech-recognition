@@ -77,14 +77,18 @@ data/processed/
 
 Note the cleaner removes all punctuation marks, as well hashtag symbols that were present in the original transcription 
 
-## 3) Fine-tune Wav2Vec2
+## 3a) Fine-tune CTC Models
 ```bash
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
 ```
-
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq.yaml
-python -m src.finetune.train_ctc --config config/finetune/seq2seq/finetune_yq_cer90.yaml
+
+
+## 3b) Fine-tine Seq2Seq Models
+```bash
 python -m src.finetune.train_seq2seq --config config/finetune/seq2seq/finetune_yq_cer90.yaml
+```
+python -m src.finetune.train_ctc --config config/finetune/seq2seq/finetune_yq_cer90.yaml
 
 Outputs:
 ```
@@ -97,7 +101,18 @@ data/processed/asr/finetune/<run_name>/
 ```
 
 ### Training on CER-filtered data (top 10% noisiest removed)
-This uses `data/processed/splits_cer90/` and `metadata_cer90.csv`:
+First generate the filtered metadata from the scored predictions:
+```bash
+python src/data/minus_10_percent.py
+```
+
+This writes `data/processed/metadata_cer90.csv` and
+`data/processed/splits_cer90/removed_noisy_top10.csv`, then rebuilds
+`data/processed/splits_cer90/train.csv`, `dev.csv`, `test.csv`, and
+`split_summary.json`.
+
+Then train with the CER-filtered data. This uses
+`data/processed/splits_cer90/` and `metadata_cer90.csv`:
 ```bash
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
 ```
