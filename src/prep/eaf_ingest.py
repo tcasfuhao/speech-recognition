@@ -273,6 +273,9 @@ def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]
                     remove_bracketed=cfg.remove_bracketed,
                     remove_diacritics=cfg.remove_diacritics,
                     collapse_whitespace=cfg.collapse_whitespace,
+                    normalize_quotes=cfg.normalize_quotes,
+                    remove_hash_and_question=cfg.remove_hash_and_question,
+                    map_numeric_speaker_codes=cfg.map_numeric_speaker_codes,
                 )
                 if not norm_text:
                     skip_infos.append(
