@@ -56,7 +56,9 @@ def main() -> None:
     ap.add_argument("--keep_apostrophe", action="store_true")
     ap.add_argument("--remove_bracketed", action="store_true")
     ap.add_argument("--remove_diacritics", action="store_true")
-    ap.add_argument("--collapse_whitespace", action="store_true")
+    ap.add_argument("--normalize_quotes", action="store_true")
+    ap.add_argument("--remove_hash_and_question", action="store_true")
+    ap.add_argument("--map_numeric_speaker_codes", action="store_true")
 
     ap.add_argument("--session_id_from", type=str, default="parent_dir")
     ap.add_argument("--audio_exts", type=str, nargs="*", default=None)
@@ -120,6 +122,9 @@ def main() -> None:
             keep_apostrophe=args.keep_apostrophe,
             remove_bracketed=args.remove_bracketed,
             remove_diacritics=args.remove_diacritics,
+            normalize_quotes=args.normalize_quotes,
+            remove_hash_and_question=args.remove_hash_and_question,
+            map_numeric_speaker_codes=args.map_numeric_speaker_codes,
             collapse_whitespace=args.collapse_whitespace,
             session_id_from=args.session_id_from,
             audio_exts=audio_exts or tuple(DEFAULT_AUDIO_EXTS),
