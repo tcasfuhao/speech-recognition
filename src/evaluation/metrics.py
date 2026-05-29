@@ -13,7 +13,7 @@ _WS_RE = re.compile(r"\s+")
 def normalize_text(
     s: str,
     *,
-    lowercase: bool = True,
+    lowercase: bool = False,
     strip_punct: bool = False,
     keep_apostrophe: bool = True,
     collapse_whitespace: bool = True,
@@ -66,7 +66,7 @@ def cer(
     ref: str,
     hyp: str,
     *,
-    lowercase: bool = True,
+    lowercase: bool = False,
     strip_punct: bool = False,
     remove_whitespace: bool = True,
     empty_ref_policy: str = "skip",
@@ -98,7 +98,7 @@ class ScoredItem:
 def score_items_cer(
     items: Iterable[ScoredItem],
     *,
-    lowercase: bool = True,
+    lowercase: bool = False,
     strip_punct: bool = False,
     remove_whitespace: bool = True,
     empty_ref_policy: str = "skip",
