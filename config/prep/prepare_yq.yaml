@@ -11,13 +11,14 @@ min_dur_ms: 200
 max_dur_ms: 30000
 
 # Text normalization
-lowercase: true
+lowercase: false
 strip_punct: true
 keep_apostrophe: false
 remove_bracketed: true
 remove_diacritics: false
 collapse_whitespace: true
 normalize_quotes: true
+remove_hash_and_question: false
 map_numeric_speaker_codes: true
 
 # Session ID mapping (used in metadata + optional group split)
