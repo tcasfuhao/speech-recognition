@@ -28,6 +28,7 @@ asr-models/yonghe-qiang
    └─ inference/          # batch transcription
 ```
 
+
 ## Requirements
 Create a Python 3.10+ conda environment and install:
 ```bash
@@ -37,6 +38,7 @@ python -m pip install -r requirements.txt
 ```
 
 **System dependencies:** `ffmpeg` is required by `pydub` for some audio formats.
+
 
 ## 1) Copy raw data into the repo
 From WSL, copy the dataset into `data/raw/`:
@@ -57,6 +59,7 @@ data/raw/
 └─ YH-868/
 ```
 
+
 ## 2) Prepare segments + metadata + 80/10/10 splits
 ```bash
 python scripts/prepare_asr_training.py --config config/prep/prepare_yq.yaml
@@ -76,6 +79,7 @@ data/processed/
 ```
 
 Note the cleaner removes all punctuation marks, as well hashtag symbols that were present in the original transcription 
+
 
 ## 3a) Fine-tune CTC Models
 ```bash
@@ -100,6 +104,37 @@ data/processed/asr/finetune/<run_name>/
 └─ test_metrics.json
 ```
 
+
+## 4) Inference (batch transcription)
+```bash
+python -m src.inference.transcribe --config config/inference/inference_yq.yaml
+```
+
+Predictions are saved under:
+```
+data/processed/asr/finetune/<model_date_time>/<seed>/
+```
+
+
+## 5) Evaluation + plots
+Score predictions with CER summaries:
+```bash
+python -m src.evaluation.evaluate_preds --config config/evaluation/evaluation_yq.yaml
+```
+
+Plot training curves from `train_log.tsv`:
+```bash
+python -m src.evaluation.plot_train_log --config config/evaluation/plot_train_log_yq.yaml
+```
+
+
+## Notes
+- Tier selection is automatic: any ELAN tier with non-empty annotations is used.
+- If you need to restrict tiers, edit `include_tier_regex` / `exclude_tier_regex`
+  in `config/prep/prepare_yq.yaml`.
+- Optional LM decoding requires `pyctcdecode` and a KenLM binary. Set `lm_path`
+  in the inference config if you use it.
+
 ### Training on CER-filtered data (top 10% noisiest removed)
 When the model has been ran, the data perhaps was not all clean, so here we can remove the top 10% noisiest data
 
@@ -119,32 +154,3 @@ Then re-train with the CER-filtered data. This uses
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
 ```
 python -m src.finetune.train_seq2seq --config config/finetune/seq2seq/finetune_yq_cer90.yaml
-
-
-## 4) Inference (batch transcription)
-```bash
-python -m src.inference.transcribe --config config/inference/inference_yq.yaml
-```
-
-Predictions are saved under:
-```
-data/processed/asr/inference/<run_name>/
-```
-
-## 5) Evaluation + plots
-Score predictions with CER summaries:
-```bash
-python -m src.evaluation.evaluate_preds --config config/evaluation/evaluation_yq.yaml
-```
-
-Plot training curves from `train_log.tsv`:
-```bash
-python -m src.evaluation.plot_train_log --config config/evaluation/plot_train_log_yq.yaml
-```
-
-## Notes
-- Tier selection is automatic: any ELAN tier with non-empty annotations is used.
-- If you need to restrict tiers, edit `include_tier_regex` / `exclude_tier_regex`
-  in `config/prep/prepare_yq.yaml`.
-- Optional LM decoding requires `pyctcdecode` and a KenLM binary. Set `lm_path`
-  in the inference config if you use it.
