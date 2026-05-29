@@ -9,6 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import numpy as np
 import yaml
 
 
@@ -69,7 +70,21 @@ def metric_frame(log_df: pd.DataFrame, y_col: str) -> pd.DataFrame:
     if y_col not in log_df.columns:
         raise ValueError(f"Column {y_col!r} not found in log file.")
 
-    return log_df.loc[log_df[y_col].notna()].copy()
+    df = log_df.loc[log_df[y_col].notna()].copy()
+    df[y_col] = pd.to_numeric(df[y_col], errors="coerce")
+    return df.loc[np.isfinite(df[y_col])].copy()
+
+
+def finite_max(log_df: pd.DataFrame, y_col: str) -> float | None:
+    if y_col not in log_df.columns:
+        return None
+
+    series = pd.to_numeric(log_df[y_col], errors="coerce")
+    series = series[np.isfinite(series)]
+    if series.empty:
+        return None
+
+    return series.max()
 
 
 def plot_metric(
@@ -161,14 +176,14 @@ def plot_training_suite(
     step_max = round_up(log_df[x_col].max(), 1000)
 
     y_lims = {
-        "loss": round_up(log_df["loss"].dropna().max(), 5)
+        "loss": round_up(finite_max(log_df, "loss"), 5)
         if "loss" in log_df else None,
-        "grad_norm": round_up(log_df["grad_norm"].dropna().max(), 5)
+        "grad_norm": round_up(finite_max(log_df, "grad_norm"), 5)
         if "grad_norm" in log_df else None,
         "learning_rate":
-            round_up(log_df["learning_rate"].dropna().max(), 5e-5)
+            round_up(finite_max(log_df, "learning_rate"), 5e-5)
             if "learning_rate" in log_df else None,
-        "eval_loss": round_up(log_df["eval_loss"].dropna().max(), 2)
+        "eval_loss": round_up(finite_max(log_df, "eval_loss"), 2)
         if "eval_loss" in log_df else None,
         "eval_cer": 0.8,
         "eval_cer_with_space": 0.8
