@@ -20,9 +20,9 @@ train_seed: 42
 batch_size: 1
 eval_batch_size: 1
 grad_accum_steps: 8
-epochs: 25
+epochs: 50
 lr: 0.00005
-patience: 5
+patience: 10
 warmup_steps: 100
 fp16: false
 bf16: true

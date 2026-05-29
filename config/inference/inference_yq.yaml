@@ -4,6 +4,7 @@ model_id_or_path: "./data/processed/asr/finetune/mms-1b-all_20260528_144328/best
 # Data
 metadata_delimiter: ","
 metadata: "./data/processed/metadata.csv"
+# metadata: "./data/processed/splits/test.csv"
 utt_root: "./data/processed"
 
 # Output
