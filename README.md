@@ -101,6 +101,8 @@ data/processed/asr/finetune/<run_name>/
 ```
 
 ### Training on CER-filtered data (top 10% noisiest removed)
+When the model has been ran, the data perhaps was not all clean, so here we can remove the top 10% noisiest data
+
 First generate the filtered metadata from the scored predictions:
 ```bash
 python src/data/minus_10_percent.py
@@ -111,7 +113,7 @@ This writes `data/processed/metadata_cer90.csv` and
 `data/processed/splits_cer90/train.csv`, `dev.csv`, `test.csv`, and
 `split_summary.json`.
 
-Then train with the CER-filtered data. This uses
+Then re-train with the CER-filtered data. This uses
 `data/processed/splits_cer90/` and `metadata_cer90.csv`:
 ```bash
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
