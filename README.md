@@ -154,3 +154,49 @@ Then re-train with the CER-filtered data. This uses
 python -m src.finetune.train_ctc --config config/finetune/ctc/finetune_yq_cer90.yaml
 ```
 python -m src.finetune.train_seq2seq --config config/finetune/seq2seq/finetune_yq_cer90.yaml
+
+### KenLM Library Workflow
+KenLM is only needed if you want LM-assisted beam decoding for CTC inference.
+
+#### 1) Install the KenLM build dependencies
+On Ubuntu/Debian:
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  build-essential cmake \
+  libboost-program-options1.88-dev \
+  libboost-thread1.88-dev \
+  libboost-test1.88-dev \
+  libeigen3-dev zlib1g-dev libbz2-dev liblzma-dev
+```
+
+#### 2) Clone and build KenLM
+```bash
+git clone https://github.com/kpu/kenlm.git
+cd kenlm
+mkdir build
+cd build
+cmake .. -DBoost_NO_BOOST_CMAKE=ON -DBoost_LIBRARY_DIRS=/usr/lib/x86_64-linux-gnu
+make -j"$(nproc)"
+```
+
+After the build, the tools you need should be available under `kenlm/build/bin/`, including `lmplz` and `build_binary`.
+
+#### 3) Prepare a plain text corpus
+One utterance per line from your transcripts:
+```bash
+cut -d',' -f<text_column> data/processed/metadata.csv > lm_corpus.txt
+```
+
+#### 4) Build an ARPA language model
+```bash
+kenlm/build/bin/lmplz -o 5 < lm_corpus.txt > yq.arpa
+```
+
+#### 5) Convert ARPA to binary
+```bash
+kenlm/build/bin/build_binary yq.arpa yq.bin
+```
+
+#### 6) Use it in inference
+Set `lm_path` in `config/inference/inference_yq.yaml` to the resulting `.bin` file.
