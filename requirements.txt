@@ -30,3 +30,7 @@ typer==0.24.1
 
 # Config
 pyyaml==6.0.3
+
+# LM
+pyctcdecode==0.5.0
+https://github.com/kpu/kenlm/archive/master.zip
