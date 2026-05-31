@@ -1,8 +1,8 @@
 # Predictions from transcribe.py
-preds: "./data/processed/asr/finetune/mms-1b-all_20260528_144328/split_seed_42/best_20260529_133112/preds-best.csv"
+preds: "./data/processed/asr/finetune/mms-1b-all_20260529_161500/best_20260531_141654/preds-best-yq_w0.5_bw50.csv"
 
 # Output directory
-out_dir: "./data/processed/asr/finetune/mms-1b-all_20260528_144328/split_seed_42/best_20260529_133112"
+out_dir: "./data/processed/asr/finetune/mms-1b-all_20260529_161500/best_20260531_141654/"
 
 # CER options
 strip_punct: false

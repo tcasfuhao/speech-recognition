@@ -1,4 +1,4 @@
-log_path: "./data/processed/asr/finetune/mms-1b-all_20260528_144328/train_log.tsv"
-out_dir: "./data/processed/asr/finetune/mms-1b-all_20260528_144328/"
+log_path: "./data/processed/asr/finetune/mms-1b-all_20260529_161500/train_log.tsv"
+out_dir: "./data/processed/asr/finetune/mms-1b-all_20260529_161500/"
 x_col: "step"
-show: true
+show: false
