@@ -1,3 +1,7 @@
 /data/*
 __pycache__
 !data/raw/.gitkeep
+*kenlm
+lm_corpus.txt
+*.arpa
+*.bin
