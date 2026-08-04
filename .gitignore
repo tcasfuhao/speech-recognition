@@ -1,7 +1,9 @@
-/data/*
-__pycache__
-!data/raw/.gitkeep
-*kenlm
-lm_corpus.txt
-*.arpa
-*.bin
+/data/
+__pycache__/
+*.py[cod]
+
+# Manifests and run logs are intentionally retained in this project.
+# Heavy audio, model checkpoints, and LM artifacts belong under data_root.
+logs/**/plots/
+
+tests/*
