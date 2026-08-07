@@ -1,0 +1,17 @@
+backend: allosaurus
+pretrained_model: uni2005
+remove_spaces: true # Required: Allosaurus phone targets cannot encode word boundaries
+model_sha256: 552751ac877abcba22481a9d022c82b22f97b0254b72bd4e312cd744ed291cbe
+allosaurus_root: ~/projects/download-projects/allosaurus
+audio_root: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits
+train_csv: ./logs/prep/yonghe_qiang/splits/train.csv
+dev_csv: ./logs/prep/yonghe_qiang/splits/dev.csv
+test_csv: ./logs/prep/yonghe_qiang/splits/test.csv
+manifest_dir: ./logs/allosaurus/manifests
+work_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/allosaurus/work
+device_id: 0
+batch_frame_size: 6000
+epochs: 10
+lr: 0.01
+report_per_batch: 10
+out_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/allosaurus/runs

@@ -1,0 +1,31 @@
+# External data. Point annotations_dir at a timestamped normalisation run once
+# data-normalisation has produced it; audio_root remains the original data root.
+data_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01"
+annotations_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/normalised/2026-07-31-17-55-46"
+audio_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01"
+
+# Heavy clips stay with the dataset; auditable manifests stay in this project.
+clips_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
+logs_dir: "./logs/prep/yonghe_qiang"
+
+# Tier selection
+include_tier_regex: null
+exclude_tier_regex: null
+
+# Segment limits
+min_dur_ms: 200
+max_dur_ms: 30000
+
+# Session ID mapping (used in metadata + optional group split)
+session_id_from: "parent_dir"
+
+# Audio extensions to consider
+audio_exts: [".wav", ".mp3", ".mp4", ".m4a", ".flac"]
+
+# 80/10/10 split (row-level by default)
+split_by_col: null
+split_seed: 42
+train_ratio: 0.8
+dev_ratio: 0.1
+test_ratio: 0.1
+allow_row_fallback: true

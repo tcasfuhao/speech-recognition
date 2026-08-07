@@ -1,0 +1,4 @@
+log_path: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/finetune/<run>/train_log.tsv"
+out_dir: "./logs/evaluation/<run>/plots"
+x_col: "step"
+show: false

@@ -1,0 +1,15 @@
+# Predictions from transcribe.py
+preds: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/inference/<run>/preds-<model>.csv"
+
+# Output directory
+out_dir: "./logs/evaluation/<run>"
+
+# CER options
+strip_punct: false
+empty_ref_policy: "skip"
+show: true
+
+# Optional grouping (examples)
+# group_by:
+#   - speaker_id
+#   - recording_id

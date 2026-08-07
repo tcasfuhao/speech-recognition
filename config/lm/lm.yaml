@@ -1,0 +1,10 @@
+# Training manifest retained in this project.
+train_csv: "./logs/prep/yonghe_qiang/splits/train.csv"
+
+# KenLM is downloaded and built outside this repository at revision
+# 4cb443e60b7bf2c0ddf3c745378f76cb59e254e5 (see the README).
+kenlm_path: "~/projects/download-projects/kenlm/build/bin"
+lm_order: 5
+
+# Generated corpus, ARPA, and binary files live with the external dataset.
+out_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/lm"

@@ -1,0 +1,25 @@
+# Data
+metadata: "./logs/prep/yonghe_qiang/metadata.csv"
+audio_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
+train_csv: "./logs/prep/yonghe_qiang/splits/train.csv"
+dev_csv: "./logs/prep/yonghe_qiang/splits/dev.csv"
+test_csv: "./logs/prep/yonghe_qiang/splits/test.csv"
+
+# Model
+backend: "ctc"
+model_id: "facebook/mms-1b-all"
+
+# Training
+remove_spaces: true # Set to false to train word-boundary spaces
+train_seed: 42
+batch_size: 1
+eval_batch_size: 1
+grad_accum_steps: 8
+epochs: 25
+lr: 0.00005
+patience: 5
+warmup_steps: 100
+fp16: true
+
+# Output
+out_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/ctc/mms"

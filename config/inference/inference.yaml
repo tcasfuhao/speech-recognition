@@ -1,0 +1,17 @@
+# Model
+model_id_or_path: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/finetune/<run>/best"
+# null reads the policy saved with the model; true/false explicitly overrides it.
+remove_spaces: null
+
+# Data
+metadata_delimiter: ","
+metadata: "./logs/prep/yonghe_qiang/splits/test.csv"
+utt_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
+
+# Output
+out_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/inference"
+
+# LM (optional)
+lm_path: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/lm/<run>/lm-yq.binary"
+lm_weight: 0.5
+beam_width: 50
