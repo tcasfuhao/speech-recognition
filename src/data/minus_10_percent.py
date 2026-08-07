@@ -15,10 +15,11 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.data.split import SplitRatios, build_split_summary, save_split_summary, split_rows
 
 
-DEFAULT_SUMMARY_PATH = PROJECT_ROOT / "data/processed/splits_cer90/cer_filter_summary.json"
-DEFAULT_METADATA_OUT = PROJECT_ROOT / "data/processed/metadata_cer90.csv"
-DEFAULT_REMOVED_OUT = PROJECT_ROOT / "data/processed/splits_cer90/removed_noisy_top10.csv"
-DEFAULT_SPLITS_DIR = PROJECT_ROOT / "data/processed/splits_cer90"
+DEFAULT_CER90_DIR = PROJECT_ROOT / "logs/prep/yonghe_qiang/cer90"
+DEFAULT_SUMMARY_PATH = DEFAULT_CER90_DIR / "cer_filter_summary.json"
+DEFAULT_METADATA_OUT = DEFAULT_CER90_DIR / "metadata.csv"
+DEFAULT_REMOVED_OUT = DEFAULT_CER90_DIR / "removed_noisy_top10.csv"
+DEFAULT_SPLITS_DIR = DEFAULT_CER90_DIR / "splits"
 
 
 def _resolve_path(path_str: str | None, default_path: Path) -> Path:
