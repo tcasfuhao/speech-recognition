@@ -47,11 +47,6 @@ METRIC_STYLE = {
         "linestyle": (0, (3, 1, 1, 1, 1, 1)),
         "ylabel": "development CER",
     },
-    "eval_cer_with_space": {
-        "color": sns.color_palette()[5],
-        "linestyle": (0, (3, 1, 5, 1)),
-        "ylabel": "development CER (with space)",
-    },
 }
 
 
@@ -186,12 +181,7 @@ def plot_training_suite(
         "eval_loss": round_up(finite_max(log_df, "eval_loss"), 2)
         if "eval_loss" in log_df else None,
         "eval_cer": 0.8,
-        "eval_cer_with_space": 0.8
-        if "eval_cer_with_space" in log_df.columns else None,
     }
-
-    if "eval_cer_with_space" in log_df.columns:
-        metrics.append("eval_cer_with_space")
 
     for metric in metrics:
         if metric not in log_df.columns:
