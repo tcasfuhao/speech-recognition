@@ -12,7 +12,7 @@ import yaml
 import src.utils.io as io
 import src.data.schema as schema
 
-from src.evaluation.metrics import cer
+from src.evaluation.metrics import cer, strip_whitespace
 
 
 def main():
@@ -130,37 +130,25 @@ def main():
         df, schema.SPEAKER_COL_CANDIDATES, required=False
     )
 
-    cer_no_space_vals = []
-    cer_with_space_vals = []
+    cer_vals = []
 
     for ref, hyp in zip(df[ref_col], df[hyp_col]):
 
-        ref = str(ref) if pd.notna(ref) else ""
-        hyp = str(hyp) if pd.notna(hyp) else ""
+        ref = strip_whitespace(ref) if pd.notna(ref) else ""
+        hyp = strip_whitespace(hyp) if pd.notna(hyp) else ""
 
-        cer_no_space_vals.append(
+        cer_vals.append(
             cer(
                 ref,
                 hyp,
                 strip_punct=args.strip_punct,
-                remove_whitespace=True,
                 empty_ref_policy=args.empty_ref_policy,
             )
         )
 
-        cer_with_space_vals.append(
-            cer(
-                ref,
-                hyp,
-                strip_punct=args.strip_punct,
-                remove_whitespace=False,
-                empty_ref_policy=args.empty_ref_policy,
-            )
-        )
-
-    df["cer_no_space"] = cer_no_space_vals
-    df["cer_with_space"] = cer_with_space_vals
-    df["cer"] = df["cer_no_space"]
+    df[ref_col] = df[ref_col].map(lambda value: strip_whitespace(value) if pd.notna(value) else "")
+    df[hyp_col] = df[hyp_col].map(lambda value: strip_whitespace(value) if pd.notna(value) else "")
+    df["cer"] = cer_vals
 
     scored_path = out_dir / "preds_scored.csv"
     df.to_csv(scored_path, index=False)
@@ -168,12 +156,10 @@ def main():
     overall = pd.DataFrame(
         [{
             "n_rows": int(df.shape[0]),
-            "n_scored": int(df["cer_no_space"].notna().sum()),
+            "n_scored": int(df["cer"].notna().sum()),
             dur_col: float(df[dur_col].sum()) if dur_col else None,
-            "mean_cer_no_space": float(df["cer_no_space"].dropna().mean()),
-            "median_cer_no_space": float(df["cer_no_space"].dropna().median()),
-            "mean_cer_with_space": float(df["cer_with_space"].dropna().mean()),
-            "median_cer_with_space": float(df["cer_with_space"].dropna().median()),
+            "mean_cer": float(df["cer"].dropna().mean()),
+            "median_cer": float(df["cer"].dropna().median()),
         }]
     )
 
@@ -186,15 +172,13 @@ def main():
         g = (
             df.groupby(group_col, dropna=False)
             .agg(
-                n_scored=("cer_no_space", "count"),
-                dur=(dur_col, "sum") if dur_col else ("cer_no_space", "count"),
-                mean_cer_no_space=("cer_no_space", "mean"),
-                median_cer_no_space=("cer_no_space", "median"),
-                mean_cer_with_space=("cer_with_space", "mean"),
-                median_cer_with_space=("cer_with_space", "median"),
+                n_scored=("cer", "count"),
+                dur=(dur_col, "sum") if dur_col else ("cer", "count"),
+                mean_cer=("cer", "mean"),
+                median_cer=("cer", "median"),
             )
             .reset_index()
-            .sort_values("mean_cer_no_space", ascending=True)
+            .sort_values("mean_cer", ascending=True)
         )
 
         if dur_col:
