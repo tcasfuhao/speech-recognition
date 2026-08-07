@@ -33,10 +33,14 @@ def normalize_text(
     return s
 
 
-def to_char_sequence(s: str, *, remove_whitespace: bool = True) -> str:
-    if remove_whitespace:
-        return re.sub(r"\s+", "", s)
-    return s
+def strip_whitespace(s: str) -> str:
+    """Return ASR text with every Unicode whitespace character removed."""
+    return _WS_RE.sub("", "" if s is None else str(s))
+
+
+def prepare_asr_text(s: str, remove_spaces: bool = True) -> str:
+    """Apply the sole optional ASR target normalisation."""
+    return strip_whitespace(s) if remove_spaces else ("" if s is None else str(s))
 
 
 def levenshtein_distance(a: str, b: str) -> int:
@@ -68,14 +72,13 @@ def cer(
     *,
     lowercase: bool = False,
     strip_punct: bool = False,
-    remove_whitespace: bool = True,
     empty_ref_policy: str = "skip",
 ) -> Optional[float]:
     ref_n = normalize_text(ref, lowercase=lowercase, strip_punct=strip_punct)
     hyp_n = normalize_text(hyp, lowercase=lowercase, strip_punct=strip_punct)
 
-    ref_c = to_char_sequence(ref_n, remove_whitespace=remove_whitespace)
-    hyp_c = to_char_sequence(hyp_n, remove_whitespace=remove_whitespace)
+    ref_c = strip_whitespace(ref_n)
+    hyp_c = strip_whitespace(hyp_n)
 
     if len(ref_c) == 0:
         if empty_ref_policy == "skip":
@@ -100,7 +103,6 @@ def score_items_cer(
     *,
     lowercase: bool = False,
     strip_punct: bool = False,
-    remove_whitespace: bool = True,
     empty_ref_policy: str = "skip",
 ) -> List[Tuple[ScoredItem, Optional[float]]]:
     out: List[Tuple[ScoredItem, Optional[float]]] = []
@@ -110,7 +112,6 @@ def score_items_cer(
             it.hyp,
             lowercase=lowercase,
             strip_punct=strip_punct,
-            remove_whitespace=remove_whitespace,
             empty_ref_policy=empty_ref_policy,
         )
         out.append((it, v))
