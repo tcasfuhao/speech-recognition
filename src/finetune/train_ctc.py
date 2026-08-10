@@ -34,20 +34,21 @@ import src.utils.io as io
 import src.data.schema as schema
 import src.data.split as split
 
-from src.evaluation.metrics import cer, normalize_text
+from src.evaluation.metrics import cer, prepare_asr_text
+from src.finetune.asr_config import write_experiment_summary
+from src.utils.text_policy import write_text_policy
 
 
 def build_char_vocab(texts: List[str]) -> Dict[str, int]:
     chars = set()
     for t in texts:
-        t = normalize_text(t)
-        chars.update(list(t))
+        chars.update(list(str(t)))
     if " " in chars:
         chars.remove(" ")
+        chars.add("|")
     vocab = sorted(chars)
 
     vocab_dict = {c: i for i, c in enumerate(vocab)}
-    vocab_dict["|"] = len(vocab_dict)
     vocab_dict["[UNK]"] = len(vocab_dict)
     vocab_dict["[PAD]"] = len(vocab_dict)
     return vocab_dict
@@ -80,7 +81,7 @@ class ASRDataset(Dataset):
         wav_path = io.resolve_audio_path(
             str(row[self.path_col]), self.audio_root
         )
-        text = normalize_text(str(row[self.text_col]))
+        text = str(row[self.text_col])
 
         waveform, sr = torchaudio.load(wav_path)
         if waveform.dim() == 2 and waveform.size(0) > 1:
@@ -142,26 +143,14 @@ def compute_metrics_factory(processor: Wav2Vec2Processor):
         label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
         label_str = processor.batch_decode(label_ids, group_tokens=False)
 
-        cers_no_space = []
-        cers_with_space = []
+        cers = []
 
         for r, h in zip(label_str, pred_str):
-            cers_no_space.append(
+            cers.append(
                 cer(
                     r,
                     h,
                     strip_punct=True,
-                    remove_whitespace=True,
-                    empty_ref_policy="skip",
-                )
-            )
-
-            cers_with_space.append(
-                cer(
-                    r,
-                    h,
-                    strip_punct=True,
-                    remove_whitespace=False,
                     empty_ref_policy="skip",
                 )
             )
@@ -171,8 +160,7 @@ def compute_metrics_factory(processor: Wav2Vec2Processor):
             return float(np.mean(vals)) if vals else 0.0
 
         return {
-            "cer": _mean(cers_no_space),
-            "cer_with_space": _mean(cers_with_space),
+            "cer": _mean(cers),
         }
 
     return compute_metrics
@@ -254,6 +242,7 @@ def main():
     ap.add_argument("--fp16", action="store_true")
 
     ap.add_argument("--out_dir", help="Output run directory")
+    ap.add_argument("--remove_spaces", action=argparse.BooleanOptionalAction, default=True)
 
     args = ap.parse_args()
 
@@ -280,6 +269,8 @@ def main():
     args.train_csv = io.expand_path(args.train_csv)
     args.dev_csv = io.expand_path(args.dev_csv)
     args.test_csv = io.expand_path(args.test_csv)
+
+    # The dispatcher validates architecture and storage before this point.
 
     model_name = args.model_id.split("/")[-1]
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -312,7 +303,7 @@ def main():
         df = pd.read_csv(args.metadata)
         path_col = schema.pick_col(df, schema.PATH_COL_CANDIDATES)
         text_col = schema.pick_col(df, schema.TEXT_COL_CANDIDATES)
-        df[text_col] = df[text_col].astype(str).map(normalize_text)
+        df[text_col] = df[text_col].astype(str)
         df = df[df[text_col].str.len() > 0].copy()
 
         ratios = split.SplitRatios(
@@ -362,9 +353,16 @@ def main():
 
     path_col = schema.pick_col(train_df, schema.PATH_COL_CANDIDATES)
     text_col = schema.pick_col(train_df, schema.TEXT_COL_CANDIDATES)
-    train_df[text_col] = train_df[text_col].astype(str).map(normalize_text)
-    dev_df[text_col] = dev_df[text_col].astype(str).map(normalize_text)
-    test_df[text_col] = test_df[text_col].astype(str).map(normalize_text)
+    target_transform = lambda value: prepare_asr_text(value, args.remove_spaces)
+    train_df[text_col] = train_df[text_col].astype(str).map(target_transform)
+    dev_df[text_col] = dev_df[text_col].astype(str).map(target_transform)
+    test_df[text_col] = test_df[text_col].astype(str).map(target_transform)
+
+    if getattr(args, "max_train_samples", None):
+        train_df = train_df.head(int(args.max_train_samples)).copy()
+    if getattr(args, "max_eval_samples", None):
+        dev_df = dev_df.head(int(args.max_eval_samples)).copy()
+        test_df = test_df.head(int(args.max_eval_samples)).copy()
 
     vocab = build_char_vocab(train_df[text_col].tolist())
     vocab_path = out_dir / "vocab.json"
@@ -376,7 +374,8 @@ def main():
         vocab_file=str(vocab_path),
         unk_token="[UNK]",
         pad_token="[PAD]",
-        word_delimiter_token="|",
+        word_delimiter_token="" if args.remove_spaces else "|",
+        replace_word_delimiter_char="" if args.remove_spaces else " ",
         do_lower_case=False,
     )
 
@@ -393,6 +392,7 @@ def main():
     config.vocab_size = len(tokenizer)
     config.pad_token_id = tokenizer.pad_token_id
     config.ctc_zero_infinity = True
+    config.remove_spaces = bool(args.remove_spaces)
 
     model = AutoModelForCTC.from_pretrained(
         args.model_id,
@@ -465,12 +465,18 @@ def main():
     final_dir.mkdir(exist_ok=True, parents=True)
     trainer.save_model(str(final_dir))
     processor.save_pretrained(str(final_dir))
+    write_text_policy(final_dir, args.remove_spaces)
 
     test_metrics = trainer.evaluate(test_ds)
 
     (out_dir / "test_metrics.json").write_text(
         json.dumps(test_metrics, indent=2),
         encoding="utf-8",
+    )
+
+    write_experiment_summary(
+        "ctc", run_name,
+        {"model_id": args.model_id, "output_dir": str(out_dir), "best": best_info, "test": test_metrics},
     )
 
     print("Done. Test metrics:", test_metrics)
