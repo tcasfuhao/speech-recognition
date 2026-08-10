@@ -10,7 +10,6 @@ import torch
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 # Local imports
-from src.evaluation.metrics import normalize_text
 from src.inference.backends.base import (
     AlignmentResult,
     TranscriptResult,
@@ -85,7 +84,7 @@ class Seq2SeqBackend:
         )[0]
 
         return TranscriptResult(
-            text=normalize_text(text, strip_punct=False),
+            text=text,
             model_id=str(self.model_id),
             metadata={
                 "backend_type": "seq2seq",
