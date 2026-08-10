@@ -31,7 +31,9 @@ import src.data.schema as schema
 import src.data.split as split
 import src.utils.io as io
 
-from src.evaluation.metrics import cer, normalize_text
+from src.evaluation.metrics import cer, prepare_asr_text
+from src.finetune.asr_config import write_experiment_summary
+from src.utils.text_policy import write_text_policy
 
 
 class SpeechSeq2SeqDataset(Dataset):
@@ -59,7 +61,7 @@ class SpeechSeq2SeqDataset(Dataset):
     def __getitem__(self, idx: int):
         row = self.df.iloc[idx]
         wav_path = io.resolve_audio_path(str(row[self.path_col]), self.audio_root)
-        text = normalize_text(str(row[self.text_col]))
+        text = str(row[self.text_col])
 
         waveform, sr = torchaudio.load(wav_path)
         if waveform.dim() == 2 and waveform.size(0) > 1:
@@ -157,25 +159,14 @@ def compute_metrics_factory(processor: AutoProcessor):
         pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
         label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
 
-        cers_no_space = []
-        cers_with_space = []
+        cers = []
 
         for ref, hyp in zip(label_str, pred_str):
-            cers_no_space.append(
+            cers.append(
                 cer(
                     ref,
                     hyp,
                     strip_punct=True,
-                    remove_whitespace=True,
-                    empty_ref_policy="skip",
-                )
-            )
-            cers_with_space.append(
-                cer(
-                    ref,
-                    hyp,
-                    strip_punct=True,
-                    remove_whitespace=False,
                     empty_ref_policy="skip",
                 )
             )
@@ -185,8 +176,7 @@ def compute_metrics_factory(processor: AutoProcessor):
             return float(np.mean(vals)) if vals else 0.0
 
         return {
-            "cer": _mean(cers_no_space),
-            "cer_with_space": _mean(cers_with_space),
+            "cer": _mean(cers),
         }
 
     return compute_metrics
@@ -246,7 +236,10 @@ def main():
     ap.add_argument("--fp16", action="store_true")
     ap.add_argument("--freeze_encoder", action="store_true")
 
+    ap.add_argument("--lora", action="store_true")
+
     ap.add_argument("--out_dir", help="Output run directory")
+    ap.add_argument("--remove_spaces", action=argparse.BooleanOptionalAction, default=True)
 
     args = load_config(ap.parse_args())
 
@@ -295,7 +288,7 @@ def main():
         df = pd.read_csv(args.metadata)
         path_col = schema.pick_col(df, schema.PATH_COL_CANDIDATES)
         text_col = schema.pick_col(df, schema.TEXT_COL_CANDIDATES)
-        df[text_col] = df[text_col].astype(str).map(normalize_text)
+        df[text_col] = df[text_col].astype(str)
         df = df[df[text_col].str.len() > 0].copy()
 
         ratios = split.SplitRatios(train=0.8, dev=0.1, test=0.1)
@@ -330,9 +323,16 @@ def main():
 
     path_col = schema.pick_col(train_df, schema.PATH_COL_CANDIDATES)
     text_col = schema.pick_col(train_df, schema.TEXT_COL_CANDIDATES)
-    train_df[text_col] = train_df[text_col].astype(str).map(normalize_text)
-    dev_df[text_col] = dev_df[text_col].astype(str).map(normalize_text)
-    test_df[text_col] = test_df[text_col].astype(str).map(normalize_text)
+    target_transform = lambda value: prepare_asr_text(value, args.remove_spaces)
+    train_df[text_col] = train_df[text_col].astype(str).map(target_transform)
+    dev_df[text_col] = dev_df[text_col].astype(str).map(target_transform)
+    test_df[text_col] = test_df[text_col].astype(str).map(target_transform)
+
+    if getattr(args, "max_train_samples", None):
+        train_df = train_df.head(int(args.max_train_samples)).copy()
+    if getattr(args, "max_eval_samples", None):
+        dev_df = dev_df.head(int(args.max_eval_samples)).copy()
+        test_df = test_df.head(int(args.max_eval_samples)).copy()
 
     processor = AutoProcessor.from_pretrained(args.model_id)
     model = AutoModelForSpeechSeq2Seq.from_pretrained(
@@ -340,6 +340,25 @@ def main():
         torch_dtype=_get_model_torch_dtype(args),
         low_cpu_mem_usage=True,
     )
+    model.config.remove_spaces = bool(args.remove_spaces)
+
+    if getattr(args, "lora", False):
+        try:
+            from peft import LoraConfig, TaskType, get_peft_model
+        except ImportError as exc:
+            raise RuntimeError("Whisper LoRA training requires the 'peft' package") from exc
+        model = get_peft_model(
+            model,
+            LoraConfig(
+                r=int(args.lora_r),
+                lora_alpha=int(args.lora_alpha),
+                lora_dropout=float(args.lora_dropout),
+                target_modules=list(args.lora_target_modules),
+                bias="none",
+                task_type=TaskType.SEQ_2_SEQ_LM,
+            ),
+        )
+        model.print_trainable_parameters()
 
     maybe_set_generation_prompt(model, processor, args.language, args.task)
 
@@ -349,6 +368,8 @@ def main():
         model.freeze_feature_encoder()
 
     model.config.use_cache = False
+    if getattr(args, "gradient_checkpointing", True):
+        model.gradient_checkpointing_enable()
 
     input_dtype = torch.bfloat16 if args.bf16 else torch.float16 if args.fp16 else None
 
@@ -417,11 +438,17 @@ def main():
     final_dir.mkdir(exist_ok=True, parents=True)
     trainer.save_model(str(final_dir))
     processor.save_pretrained(str(final_dir))
+    write_text_policy(final_dir, args.remove_spaces)
 
     test_metrics = trainer.evaluate(test_ds)
     (out_dir / "test_metrics.json").write_text(
         json.dumps(test_metrics, indent=2),
         encoding="utf-8",
+    )
+
+    write_experiment_summary(
+        "whisper", run_name,
+        {"model_id": args.model_id, "output_dir": str(out_dir), "best": best_info, "test": test_metrics},
     )
 
     print("Done. Test metrics:", test_metrics)
