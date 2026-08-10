@@ -19,9 +19,10 @@ from tqdm import tqdm
 import src.data.schema as schema
 import src.utils.io as io
 
-from src.evaluation.metrics import normalize_text
 from src.inference.backends.factory import load_asr_backend
 from src.utils.speech import load_audio_mono_16k
+from src.evaluation.metrics import prepare_asr_text
+from src.utils.text_policy import resolve_remove_spaces
 
 
 def main():
@@ -50,8 +51,15 @@ def main():
     )
     ap.add_argument("--lm_weight", type=float, default=0.5, help="LM weight")
     ap.add_argument("--beam_width", type=int, default=50)
+    ap.add_argument(
+        "--remove_spaces",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Override the saved model text policy (default: read it from the model)",
+    )
 
     args = ap.parse_args()
+    cli_remove_spaces = args.remove_spaces
 
     if args.config:
         with open(args.config, "r") as f:
@@ -63,6 +71,9 @@ def main():
         print(f"Loaded config from {args.config}:")
         print(yaml.dump(config, sort_keys=False))
 
+    if cli_remove_spaces is not None:
+        args.remove_spaces = cli_remove_spaces
+
     required = ["model_id_or_path", "metadata", "out_dir"]
     for r in required:
         if getattr(args, r) is None:
@@ -71,6 +82,8 @@ def main():
     args.model_id_or_path = io.expand_path(args.model_id_or_path)
     args.metadata = io.expand_path(args.metadata)
     args.out_dir = io.expand_path(args.out_dir)
+    remove_spaces = resolve_remove_spaces(args.model_id_or_path, args.remove_spaces)
+    print(f"ASR remove_spaces policy: {remove_spaces}")
 
     if args.utt_root is not None:
         args.utt_root = io.expand_path(args.utt_root)
@@ -182,10 +195,11 @@ def main():
         seg_path = str(row[path_col])
         seg_path_fs = io.resolve_audio_path(seg_path, args.utt_root)
 
-        ref_text = (
-            normalize_text(str(row[text_col]))
+        ref_text = prepare_asr_text(
+            str(row[text_col])
             if text_col and pd.notna(row[text_col])
-            else ""
+            else "",
+            remove_spaces,
         )
 
         session_id = str(row[sess_col]) if sess_col and pd.notna(row[sess_col]) else ""
@@ -201,7 +215,7 @@ def main():
 
         try:
             result = backend.transcribe(wav)
-            pred = result.text
+            pred = prepare_asr_text(result.text, remove_spaces)
         except Exception as e:
             print("ERROR on:", seg_path_fs)
             error_writer.writerow([
