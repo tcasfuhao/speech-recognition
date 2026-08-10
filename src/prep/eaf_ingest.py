@@ -2,8 +2,6 @@ from __future__ import annotations
 
 # Standard libraries
 import re
-import unicodedata
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
@@ -20,87 +18,15 @@ DEFAULT_AUDIO_EXTS = {".wav", ".mp3", ".mp4", ".m4a", ".flac"}
 
 @dataclass(frozen=True)
 class IngestConfig:
-    raw_dir: str
-    out_dir: str
+    annotations_dir: str
+    audio_root: str
+    clips_dir: str
     include_tier_regex: Optional[str] = None
     exclude_tier_regex: Optional[str] = None
     min_dur_ms: int = 200
     max_dur_ms: int = 30000
-    lowercase: bool = True
-    strip_punct: bool = False
-    keep_apostrophe: bool = True
-    remove_bracketed: bool = True
-    remove_diacritics: bool = False
-    collapse_whitespace: bool = True
     session_id_from: str = "parent_dir"  # "parent_dir" | "recording_id"
     audio_exts: Tuple[str, ...] = tuple(DEFAULT_AUDIO_EXTS)
-    normalize_quotes: bool = True
-    remove_hash_and_question: bool = True
-    map_numeric_speaker_codes: bool = False
-
-_SINGLE_CHAR_TRANSLATION = str.maketrans(
-    {
-        "’": "'",
-        "‘": "'",
-        "`": "'",
-        "´": "'",
-        "“": "''",
-        "”": "''",
-    }
-)
-
-
-def normalize_text(
-    s: str,
-    *,
-    lowercase: bool,
-    strip_punct: bool,
-    keep_apostrophe: bool,
-    remove_bracketed: bool,
-    remove_diacritics: bool,
-    collapse_whitespace: bool,
-    normalize_quotes: bool,
-    remove_hash_and_question: bool,
-    map_numeric_speaker_codes: bool,
-
-) -> str:
-    if s is None:
-        return ""
-    s = str(s).strip()
-
-    if lowercase:
-        s = s.lower()
-    
-    if normalize_quotes:
-        s = s.translate(_SINGLE_CHAR_TRANSLATION)
-
-    if remove_bracketed:
-        s = re.sub(r"\[[^\]]*\]", " ", s)
-        s = re.sub(r"\([^)]*\)", " ", s)
-        s = re.sub(r"[\[\]\(\)]", " ", s)
-
-    if remove_hash_and_question:
-        s = s.replace("#", "")
-        s = s.replace("?", "")
-    
-    if map_numeric_speaker_codes:
-        s = s.replace("33", "M").replace("35", "R").replace("55", "H").replace("53", "F")
-
-
-    if remove_diacritics:
-        s = unicodedata.normalize("NFD", s)
-        s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-
-    if strip_punct:
-        if keep_apostrophe:
-            s = re.sub(r"[^\w\s']", " ", s)
-        else:
-            s = re.sub(r"[^\w\s]", " ", s)
-
-    if collapse_whitespace:
-        s = re.sub(r"\s+", " ", s).strip()
-
-    return s
 
 
 def slugify_tier(tier_name: str) -> str:
@@ -109,7 +35,11 @@ def slugify_tier(tier_name: str) -> str:
     return s or "tier"
 
 
-def find_audio_for_eaf(eaf_path: Path, audio_exts: Iterable[str]) -> Optional[Path]:
+def find_audio_for_eaf(
+    eaf_path: Path,
+    audio_root: Path,
+    audio_exts: Iterable[str],
+) -> Optional[Path]:
     base = eaf_path.with_suffix("")
     for ext in audio_exts:
         candidate = base.with_suffix(ext)
@@ -122,6 +52,28 @@ def find_audio_for_eaf(eaf_path: Path, audio_exts: Iterable[str]) -> Optional[Pa
     ]
     if len(audio_files) == 1:
         return audio_files[0]
+
+    # Normalised EAFs can live in a separate timestamped tree. Fall back to
+    # the configured data root, where the original recording audio remains.
+    allowed_exts = {ext.casefold() for ext in audio_exts}
+    direct_matches = [
+        path
+        for path in audio_root.glob(f"{eaf_path.stem}.*")
+        if path.is_file() and path.suffix.casefold() in allowed_exts
+    ]
+    if len(direct_matches) == 1:
+        return direct_matches[0]
+
+    matches = [
+        path
+        for path in audio_root.rglob(f"{eaf_path.stem}.*")
+        if path.is_file()
+        and path.suffix.casefold() in allowed_exts
+        and not {"processed", "normalised", "undone"}.intersection(path.parts)
+    ]
+    matches = sorted({path.resolve() for path in matches if path.is_file()})
+    if len(matches) == 1:
+        return matches[0]
     return None
 
 
@@ -166,20 +118,21 @@ def _session_id_from_path(eaf_path: Path, mode: str) -> str:
 
 
 def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    raw_dir = Path(cfg.raw_dir).expanduser()
-    out_dir = Path(cfg.out_dir).expanduser()
-    wav_dir = out_dir / "wav"
+    annotations_dir = Path(cfg.annotations_dir).expanduser()
+    audio_root = Path(cfg.audio_root).expanduser()
+    clips_dir = Path(cfg.clips_dir).expanduser()
+    wav_dir = clips_dir / "wav"
     wav_dir.mkdir(parents=True, exist_ok=True)
 
     seg_infos: List[dict] = []
     skip_infos: List[dict] = []
 
-    eaf_files = list(raw_dir.rglob("*.eaf"))
+    eaf_files = list(annotations_dir.rglob("*.eaf"))
     if not eaf_files:
-        raise ValueError(f"No .eaf files found under {raw_dir}")
+        raise ValueError(f"No .eaf files found under {annotations_dir}")
 
     for eaf_path in eaf_files:
-        audio_path = find_audio_for_eaf(eaf_path, cfg.audio_exts)
+        audio_path = find_audio_for_eaf(eaf_path, audio_root, cfg.audio_exts)
         if audio_path is None:
             skip_infos.append(
                 {
@@ -216,7 +169,6 @@ def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]
             continue
 
         audio = AudioSegment.from_file(audio_path)
-        audio = audio.set_frame_rate(16000).set_channels(1)
 
         recording_id = eaf_path.stem
         session_id = _session_id_from_path(eaf_path, cfg.session_id_from)
@@ -265,19 +217,8 @@ def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]
                     )
                     continue
 
-                norm_text = normalize_text(
-                    text,
-                    lowercase=cfg.lowercase,
-                    strip_punct=cfg.strip_punct,
-                    keep_apostrophe=cfg.keep_apostrophe,
-                    remove_bracketed=cfg.remove_bracketed,
-                    remove_diacritics=cfg.remove_diacritics,
-                    collapse_whitespace=cfg.collapse_whitespace,
-                    normalize_quotes=cfg.normalize_quotes,
-                    remove_hash_and_question=cfg.remove_hash_and_question,
-                    map_numeric_speaker_codes=cfg.map_numeric_speaker_codes,
-                )
-                if not norm_text:
+                source_text = "" if text is None else str(text)
+                if not source_text.strip():
                     skip_infos.append(
                         {
                             "eaf_path": str(eaf_path),
@@ -300,8 +241,8 @@ def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]
 
                 seg_infos.append(
                     {
-                        "segment_path": str(seg_path.relative_to(out_dir)),
-                        "text": norm_text,
+                        "segment_path": str(seg_path.relative_to(clips_dir)),
+                        "text": source_text,
                         "recording_id": recording_id,
                         "session_id": session_id,
                         "tier_name": tier_name,
