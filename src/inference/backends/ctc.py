@@ -11,12 +11,12 @@ import torch
 from transformers import AutoModelForCTC, AutoProcessor
 
 # Local imports
-from src.evaluation.metrics import normalize_text
 from src.inference.backends.base import (
     AlignmentResult,
     AlignmentUnit,
     TranscriptResult,
 )
+from src.evaluation.metrics import strip_whitespace
 
 
 def get_trellis(
@@ -86,16 +86,11 @@ class CTCBackend:
             tokenizer = self.processor.tokenizer
 
             if getattr(tokenizer, "word_delimiter_token_id", None) is not None:
-                vocab_list[tokenizer.word_delimiter_token_id] = " "
+                vocab_list[tokenizer.word_delimiter_token_id] = ""
 
             print("[LM CHECK] vocab size:", len(vocab_list))
             print("[LM CHECK] first 20 labels:", vocab_list[:20])
             print("[LM CHECK] pad_token_id:", self.get_blank_id())
-            print(
-                "[LM CHECK] word_delimiter_token_id:",
-                getattr(tokenizer, "word_delimiter_token_id", None),
-            )
-
             self.decoder = build_ctcdecoder(
                 labels=vocab_list,
                 kenlm_model_path=self.lm_path,
@@ -114,13 +109,13 @@ class CTCBackend:
         unit_type: str = "char",
         alignment_mode: str = "partial",
     ) -> AlignmentResult:
-        if unit_type not in {"char", "word"}:
+        if unit_type != "char":
             raise ValueError(f"Unsupported unit_type: {unit_type}")
 
         blank_id = self.get_blank_id()
 
-        transcript = normalize_text(text, strip_punct=False)
-        alignment_text = transcript.replace(" ", "")
+        transcript = strip_whitespace(text)
+        alignment_text = transcript
 
         tokens = self.transcript_to_tokens(alignment_text)
 
@@ -132,13 +127,7 @@ class CTCBackend:
         )
         char_segments = merge_repeats(path, alignment_text)
 
-        if unit_type == "word":
-            output_segments = derive_word_segments_from_text(
-                char_segments=char_segments,
-                transcript=transcript,
-            )
-        else:
-            output_segments = char_segments
+        output_segments = char_segments
 
         units = segments_to_alignment_units(
             segments=output_segments,
@@ -156,7 +145,6 @@ class CTCBackend:
                 "backend_type": "ctc",
                 "alignment_type": "forced",
                 "alignment_text": alignment_text,
-                "spaces_aligned": False,
                 "sample_rate": 16000,
                 "num_frames": emissions.size(0),
                 "num_samples": wav_16k.numel(),
@@ -219,7 +207,7 @@ class CTCBackend:
             decoding = "ctc_greedy"
 
         return TranscriptResult(
-            text=normalize_text(text, strip_punct=False),
+            text=text,
             model_id=str(self.model_id),
             metadata={
                 "backend_type": "ctc",
@@ -325,46 +313,6 @@ class Segment:
     @property
     def length(self) -> int:
         return self.end - self.start
-
-
-def derive_word_segments_from_text(
-    char_segments: list[Segment],
-    transcript: str,
-) -> list[Segment]:
-    words: list[Segment] = []
-    char_index = 0
-
-    for word_text in transcript.split():
-        word_len = len(word_text)
-        word_chars = char_segments[char_index : char_index + word_len]
-
-        if len(word_chars) != word_len:
-            raise ValueError(
-                "Not enough character segments to reconstruct word spans."
-            )
-
-        score = (
-            sum(seg.score * seg.length for seg in word_chars)
-            / sum(seg.length for seg in word_chars)
-        )
-
-        words.append(
-            Segment(
-                label=word_text,
-                start=word_chars[0].start,
-                end=word_chars[-1].end,
-                score=score,
-            )
-        )
-
-        char_index += word_len
-
-    if char_index != len(char_segments):
-        raise ValueError(
-            "Unused character segments remain after reconstructing word spans."
-        )
-
-    return words
 
 
 def merge_repeats(
