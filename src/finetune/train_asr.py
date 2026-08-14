@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -15,7 +14,6 @@ MODULES = {
     "ctc": "src.finetune.train_ctc",
     "whisper": "src.finetune.train_seq2seq",
     "granite": "src.finetune.train_granite",
-    "allosaurus": "src.finetune.train_allosaurus",
 }
 
 
@@ -49,14 +47,9 @@ def main() -> None:
         return
 
     dispatch_config = _smoke_config(config, config_path) if args.smoke else config_path
-    env = os.environ.copy()
-    if config["backend"] == "allosaurus":
-        root = str(Path(config["allosaurus_root"]).expanduser().resolve())
-        env["PYTHONPATH"] = root + os.pathsep + env.get("PYTHONPATH", "")
     completed = subprocess.run(
         [sys.executable, "-m", MODULES[config["backend"]], "--config", str(dispatch_config)],
         check=False,
-        env=env,
     )
     if completed.returncode:
         raise SystemExit(f"{config['backend']} backend exited with status {completed.returncode}")
