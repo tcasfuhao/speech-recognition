@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +11,7 @@ from src.data import schema
 from src.utils.io import expand_path, resolve_audio_path
 
 
-SUPPORTED_BACKENDS = {"ctc", "whisper", "granite", "allosaurus"}
+SUPPORTED_BACKENDS = {"ctc", "whisper", "granite"}
 KNOWN_MODELS = {
     "facebook/mms-1b-all": "ctc",
     "facebook/wav2vec2-xlsr-53-espeak-cv-ft": "ctc",
@@ -59,25 +58,7 @@ def validate_config(config: dict[str, Any], *, check_audio: bool = True) -> dict
         if marker in lowered:
             errors.append(f"model_id {model_id!r} is incompatible: {reason}")
 
-    if backend == "allosaurus":
-        if config.get("remove_spaces", True) is False:
-            errors.append(
-                "Allosaurus cannot preserve word-boundary spaces in its phone-label targets; "
-                "set remove_spaces: true"
-            )
-        if config.get("pretrained_model") != "uni2005":
-            errors.append("Allosaurus pretrained_model must be pinned to 'uni2005'")
-        root = Path(_expanded(config, "allosaurus_root") or "")
-        model_root = root / "allosaurus" / "pretrained" / "uni2005"
-        if not (model_root / "phone.txt").is_file():
-            errors.append(f"uni2005 is not installed beneath allosaurus_root: {root}")
-        expected_sha = config.get("model_sha256")
-        model_file = model_root / "model.pt"
-        if expected_sha and model_file.is_file():
-            actual_sha = hashlib.sha256(model_file.read_bytes()).hexdigest()
-            if actual_sha != expected_sha:
-                errors.append(f"uni2005 model.pt checksum mismatch: {actual_sha}")
-    else:
+    if backend in SUPPORTED_BACKENDS:
         expected = KNOWN_MODELS.get(model_id)
         if expected is None:
             errors.append(
@@ -151,7 +132,7 @@ def validate_config(config: dict[str, Any], *, check_audio: bool = True) -> dict
     report = {
         "valid": not errors,
         "backend": backend,
-        "model": config.get("pretrained_model") if backend == "allosaurus" else model_id,
+        "model": model_id,
         "architecture": architecture,
         "split_rows": {name: len(frame) for name, frame in split_frames.items()},
         "errors": errors,
