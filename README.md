@@ -1,6 +1,6 @@
 # ASR Finetuning
 
-GPU-ready preparation, training, language-model, inference, and evaluation tools for the Yonghe Qiang dataset. The repository contains code, configuration, and auditable CSV/JSON logs. Heavy data and model artifacts live with the configured external dataset.
+GPU-ready preparation, training, language-model, inference, and evaluation tools for any language dataset. The repository contains code, configuration, and auditable CSV/JSON logs. Heavy data and model artifacts live with the configured external dataset.
 
 ## Storage layout
 
@@ -52,7 +52,7 @@ Run the sibling `data-normalisation` workflow first. It writes a timestamped cop
 
 ASR preparation keeps the normalised transcriptions and their single word-boundary spaces intact; it does not rewrite clips to mono/16 kHz. Model loaders perform required channel conversion and resampling in memory during training or inference.
 
-Training configs use `remove_spaces: true` by default. The model loader removes all Unicode whitespace from targets in memory, without changing the manifests or the normalised source data. Set it to `false` for CTC, Whisper, or Granite when a researcher deliberately wants the ASR model to learn spaces. Allosaurus cannot represent word-boundary spaces and rejects that setting.
+Training configs use `remove_spaces: true` by default. The model loader removes all Unicode whitespace from targets in memory, without changing the manifests or the normalised source data. Set it to `false` for CTC, Whisper, or Granite when a researcher deliberately wants the ASR model to learn spaces.
 
 The choice is saved with each trained model. Inference reads it automatically; `remove_spaces: true` or `false` in the inference config can override it. CER always ignores whitespace and is reported only as `cer`—there is no space-sensitive CER metric. The unchanged spaced normalisation run remains the gold input for the sibling `space-recognition` project.
 
@@ -72,26 +72,40 @@ python scripts/prepare_asr_training.py --config config/prep/prepare_yq.yaml --st
 
 ## 3. Validate and train an ASR backend
 
-Every checkpoint has a dedicated YAML file and an explicit `backend`: `ctc`, `whisper`, `granite`, or `allosaurus`. The dispatcher rejects text-only, G2P, TTS, unknown, and backend-incompatible checkpoints before it creates a run.
+Every checkpoint has a dedicated YAML file and an explicit active `backend`: `ctc`, `whisper`, or `granite`. The dispatcher rejects text-only, G2P, TTS, unknown, and backend-incompatible checkpoints before it creates a run.
 
 ```bash
 # Always validate first. The report stays in logs/validation/.
-python -m src.finetune.train_asr --config config/finetune/ctc/finetune_yq.yaml --validate-only
+python -m src.finetune.train_asr --config config/finetune/ctc/finetune_cer90.yaml --validate-only
 
 # Full training or a fixed, one-epoch smoke subset.
-python -m src.finetune.train_asr --config config/finetune/ctc/finetune_yq.yaml
-python -m src.finetune.train_asr --config config/finetune/whisper/ipa_whisper_base_yq_cer90.yaml --smoke
+python -m src.finetune.train_asr --config config/finetune/ctc/finetune_cer90.yaml
+python -m src.finetune.train_asr --config config/finetune/whisper/ipa_whisper_base_cer90.yaml --smoke
 ```
 
-The supported configurations are MMS and XLS-R (CTC), IPA-Whisper Base and Whisper Large-v3 (Whisper Seq2Seq), Granite 4.0 Speech (multimodal LoRA), and Allosaurus `uni2005`. Large-v3 and Granite default to BF16 LoRA with gradient checkpointing. Granite uses its required `<|audio|>` chat prompt and multimodal processor rather than the Whisper collator.
+The supported configurations are MMS and XLS-R (CTC), IPA-Whisper Base and Whisper Large-v3 (Whisper Seq2Seq), and Granite 4.0 Speech (multimodal LoRA). Large-v3 and Granite default to BF16 LoRA with gradient checkpointing. Granite uses its required `<|audio|>` chat prompt and multimodal processor rather than the Whisper collator. Allosaurus experiments are retired and retained only beneath `legacy/`; they are not accepted by the active dispatcher.
 
 Training reads local split manifests and external clips. All checkpoints and models are written beneath `<data_root>/processed/asr/<backend>/`; validation, smoke configuration, manifests, predictions, failures, and summaries stay in `logs/`.
 
-### Allosaurus adaptation
+### Run several training configurations sequentially
 
-The pinned model is installed at `~/projects/download-projects/allosaurus/allosaurus/pretrained/uni2005/` and the configured `allosaurus_root` is prepended to `PYTHONPATH`, avoiding any empty site-packages model store. The backend converts train/dev CSVs to native `train`/`validate` `wave` and `text` manifests, keeps test held out, and writes Kaldi features beneath `processed/asr/allosaurus/work/`.
+The queue runner validates every configuration before starting the first job, then launches each trainer in a separate Python process. CTC is a training objective/backend; MMS and XLS-R are two different pretrained models that use it. Every queued model starts independently from the checkpoint named in its own training YAML—weights do not carry from one job to the next.
 
-Compact IPA is greedily tokenized with affricates kept whole, legacy aspirate characters restored, whitespace discarded, and `M/H/R/F/3/5` expanded to mid/high tone phones. The generated target inventory and unsupported-token CSV are auditable. Adaptation stops before feature generation if even one label is not present in `uni2005`; this is especially relevant because the pinned universal phone list does not itself contain the `˧` and `˥` tone phones.
+The included comparison runs MMS CTC, XLS-R CTC, IPA Whisper Base, Whisper Large-v3, and Granite in that order. A full run is expensive, so validate or smoke-test it first:
+
+```bash
+python -m src.finetune.train_queue --config config/finetune/queues/yonghe_model_comparison.yaml --validate-only
+python -m src.finetune.train_queue --config config/finetune/queues/yonghe_model_comparison.yaml --smoke
+python -m src.finetune.train_queue --config config/finetune/queues/yonghe_model_comparison.yaml
+```
+
+Queue YAML paths are resolved relative to the queue file. Job names and training configs must be unique. By default, a failure stops the queue; set `stop_on_failure: false` in YAML or pass `--continue-on-error` to attempt the remaining jobs.
+
+Each run writes `queue_state.json` and one terminal log per job beneath `logs/queues/<queue-name>/<timestamp>/`. The state records the model output directory produced by each trainer. Resume an interrupted or failed run explicitly; successful jobs are skipped and incomplete jobs restart from their original training configuration:
+
+```bash
+python -m src.finetune.train_queue --resume logs/queues/yonghe_model_comparison/<timestamp>
+```
 
 ## 4. Build KenLM outside the repository
 
