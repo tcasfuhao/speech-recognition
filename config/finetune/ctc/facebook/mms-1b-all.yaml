@@ -5,6 +5,13 @@ train_csv: "./logs/prep/yonghe_qiang/splits/train.csv"
 dev_csv: "./logs/prep/yonghe_qiang/splits/dev.csv"
 test_csv: "./logs/prep/yonghe_qiang/splits/test.csv"
 
+## Data (CER-filtered: top 10% highest CER removed)
+# metadata: "./logs/prep/yonghe_qiang/cer90/metadata.csv"
+# audio_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
+# train_csv: "./logs/prep/yonghe_qiang/cer90/splits/train.csv"
+# dev_csv: "./logs/prep/yonghe_qiang/cer90/splits/dev.csv"
+# test_csv: "./logs/prep/yonghe_qiang/cer90/splits/test.csv"
+
 # Model
 backend: "ctc"
 model_id: "facebook/mms-1b-all"
