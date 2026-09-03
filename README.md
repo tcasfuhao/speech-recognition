@@ -76,14 +76,16 @@ Every checkpoint has a dedicated YAML file and an explicit active `backend`: `ct
 
 ```bash
 # Always validate first. The report stays in logs/validation/.
-python -m src.finetune.train_asr --config config/finetune/ctc/finetune_cer90.yaml --validate-only
+python -m src.finetune.train_asr --config config/finetune/ctc/facebook/wav2vec2-xls-r-1b.yaml --validate-only
 
 # Full training or a fixed, one-epoch smoke subset.
-python -m src.finetune.train_asr --config config/finetune/ctc/finetune_cer90.yaml
-python -m src.finetune.train_asr --config config/finetune/whisper/ipa_whisper_base_cer90.yaml --smoke
+python -m src.finetune.train_asr --config config/finetune/ctc/facebook/wav2vec2-xls-r-1b.yaml --smoke
+python -m src.finetune.train_asr --config config/finetune/ctc/facebook/wav2vec2-xls-r-1b.yaml
 ```
 
 The supported configurations are MMS and XLS-R (CTC), IPA-Whisper Base and Whisper Large-v3 (Whisper Seq2Seq), and Granite 4.0 Speech (multimodal LoRA). Large-v3 and Granite default to BF16 LoRA with gradient checkpointing. Granite uses its required `<|audio|>` chat prompt and multimodal processor rather than the Whisper collator. Allosaurus experiments are retired and retained only beneath `legacy/`; they are not accepted by the active dispatcher.
+
+`facebook/wav2vec2-xls-r-1b` illustrates how to assess a future CTC checkpoint: it is a candidate because it uses the Wav2Vec2/XLS-R architecture expected by the CTC trainer. Inspect the Hugging Face configuration to confirm `model_type: wav2vec2`, then verify that its feature extractor and `AutoModelForCTC` load successfully with the project-generated vocabulary. A base XLS-R checkpoint need not include a project-specific CTC head because fine-tuning replaces or initializes that head for the vocabulary. Once the load check succeeds, add the model ID to the dispatcher's explicit supported-model list and run `--validate-only`; the current validator rejects unregistered model IDs before it performs its architecture check.
 
 Training reads local split manifests and external clips. All checkpoints and models are written beneath `<data_root>/processed/asr/<backend>/`; validation, smoke configuration, manifests, predictions, failures, and summaries stay in `logs/`.
 
