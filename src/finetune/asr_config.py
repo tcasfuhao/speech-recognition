@@ -15,9 +15,10 @@ SUPPORTED_BACKENDS = {"ctc", "whisper", "granite"}
 KNOWN_MODELS = {
     "facebook/mms-1b-all": "ctc",
     "facebook/wav2vec2-xlsr-53-espeak-cv-ft": "ctc",
+    "facebook/wav2vec2-xls-r-1b": "ctc",
+    "ibm-granite/granite-4.0-1b-speech": "granite",
     "neurlang/ipa-whisper-base": "whisper",
     "openai/whisper-large-v3": "whisper",
-    "ibm-granite/granite-4.0-1b-speech": "granite",
 }
 EXPECTED_MODEL_TYPES = {"ctc": {"wav2vec2"}, "whisper": {"whisper"}, "granite": {"granite_speech"}}
 REJECTED_MODEL_HINTS = {
