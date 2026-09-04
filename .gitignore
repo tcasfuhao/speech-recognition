@@ -5,6 +5,7 @@ __pycache__/
 # Manifests and run logs are intentionally retained in this project.
 # Heavy audio, model checkpoints, and LM artifacts belong under data_root.
 config/finetune/comparison/
+config/prep/comparison/
 logs/*
 
 tests/*
