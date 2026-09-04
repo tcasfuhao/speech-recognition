@@ -52,6 +52,8 @@ def validate_config(config: dict[str, Any], *, check_audio: bool = True) -> dict
         errors.append(f"backend must be one of {sorted(SUPPORTED_BACKENDS)}")
     if not isinstance(config.get("remove_spaces", True), bool):
         errors.append("remove_spaces must be true or false")
+    if not isinstance(config.get("allow_recording_overlap", False), bool):
+        errors.append("allow_recording_overlap must be true or false")
 
     model_id = str(config.get("model_id", ""))
     lowered = model_id.lower()
@@ -122,6 +124,23 @@ def validate_config(config: dict[str, Any], *, check_audio: bool = True) -> dict
             overlap = path_sets[left] & path_sets[right]
             if overlap:
                 errors.append(f"{left}/{right} manifests overlap in {len(overlap)} audio paths")
+
+        # Recording overlap remains an error by default. Comparisons that
+        # deliberately split utterance rows must opt in explicitly.
+        if (
+            not config.get("allow_recording_overlap", False)
+            and all("recording_id" in frame.columns for frame in split_frames.values())
+        ):
+            recording_sets = {
+                name: set(frame["recording_id"].dropna().astype(str))
+                for name, frame in split_frames.items()
+            }
+            for left, right in (("train", "dev"), ("train", "test"), ("dev", "test")):
+                overlap = recording_sets[left] & recording_sets[right]
+                if overlap:
+                    errors.append(
+                        f"{left}/{right} manifests overlap in {len(overlap)} recording IDs"
+                    )
 
     if backend in {"whisper", "granite"} and config.get("lora", False):
         for key in ("lora_r", "lora_alpha", "lora_dropout", "lora_target_modules"):
