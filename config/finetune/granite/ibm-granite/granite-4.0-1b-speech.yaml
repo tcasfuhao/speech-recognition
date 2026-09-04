@@ -14,7 +14,7 @@ test_csv: ./logs/prep/yonghe_qiang/cer90/splits/test.csv
 
 # Model
 backend: granite
-model_id: ibm-granite/granite-4.0-1b-speech
+model_id: "ibm-granite/granite-4.0-1b-speech"
 prompt: "<|audio|>can you transcribe the speech into IPA?"
 
 # Training
