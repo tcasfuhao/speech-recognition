@@ -93,12 +93,12 @@ Training reads local split manifests and external clips. All checkpoints and mod
 
 The queue runner validates every configuration before starting the first job, then launches each trainer in a separate Python process. CTC is a training objective/backend; MMS and XLS-R are two different pretrained models that use it. Every queued model starts independently from the checkpoint named in its own training YAML—weights do not carry from one job to the next.
 
-The included comparison runs MMS CTC, XLS-R CTC, IPA Whisper Base, Whisper Large-v3, and Granite in that order. A full run is expensive, so validate or smoke-test it first:
+The normalisation comparison queue runs MMS CTC, XLS-R CTC, and IPA-Whisper Base in language → edition → model order. A full run is expensive, so prepare the manifests and use its dedicated validation and smoke queues first:
 
 ```bash
-python -m src.finetune.train_queue --config config/finetune/queues/yonghe_model_comparison.yaml --validate-only
-python -m src.finetune.train_queue --config config/finetune/queues/yonghe_model_comparison.yaml --smoke
-python -m src.finetune.train_queue --config config/finetune/queues/yonghe_model_comparison.yaml
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --validate-only
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison_smoke.yaml --smoke
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml
 ```
 
 Queue YAML paths are resolved relative to the queue file. Job names and training configs must be unique. By default, a failure stops the queue; set `stop_on_failure: false` in YAML or pass `--continue-on-error` to attempt the remaining jobs.
@@ -106,8 +106,28 @@ Queue YAML paths are resolved relative to the queue file. Job names and training
 Each run writes `queue_state.json` and one terminal log per job beneath `logs/queues/<queue-name>/<timestamp>/`. The state records the model output directory produced by each trainer. Resume an interrupted or failed run explicitly; successful jobs are skipped and incomplete jobs restart from their original training configuration:
 
 ```bash
-python -m src.finetune.train_queue --resume logs/queues/yonghe_model_comparison/<timestamp>
+python -m src.finetune.train_queue --resume logs/queues/normalisation_model_comparison/<timestamp>
 ```
+
+#### 45-run normalisation comparison
+
+The comparison configuration covers Japhug, Yonghe-Qiang, and Yongning-Na for the five completed editions (`unnormalised`, `tones`, `map-chars`, `brackets`, and `full`) and three models (MMS CTC, XLS-R CTC, and IPA-Whisper Base). Preparation is intentionally per language-edition: every config extracts only the selected tier, discards texts blanked by that edition, and creates its own deterministic utterance-level 80/10/10 manifests. Different utterances from one recording may occur in different splits; individual audio clips never overlap.
+
+```bash
+# Prepare all 15 language-edition manifest sets.
+for config in config/prep/comparison/*.yaml; do python scripts/prepare_asr_training.py --config "$config"; done
+
+# This checks manifest separation, audio paths, and model configs.
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --validate-only
+
+# First run the six-job (one CTC + one Whisper per language) smoke queue.
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison_smoke.yaml --smoke
+
+# Then launch the 45 independent production jobs.
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml
+```
+
+The production queue continues after a failed job and records every terminal status, validation report, and completed output path in its queue state.
 
 ## 4. Build KenLM outside the repository
 
