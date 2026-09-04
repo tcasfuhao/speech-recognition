@@ -8,9 +8,15 @@ from typing import Iterable, List, Optional, Tuple
 
 # Third-party libraries
 import pandas as pd
-import pympi
+try:  # Keep selector/path helpers testable without the optional audio stack.
+    import pympi
+except ModuleNotFoundError:  # pragma: no cover - guarded again at ingestion.
+    pympi = None
 
-from pydub import AudioSegment
+try:
+    from pydub import AudioSegment
+except ModuleNotFoundError:  # pragma: no cover - guarded again at ingestion.
+    AudioSegment = None
 
 
 DEFAULT_AUDIO_EXTS = {".wav", ".mp3", ".mp4", ".m4a", ".flac"}
@@ -23,6 +29,9 @@ class IngestConfig:
     clips_dir: str
     include_tier_regex: Optional[str] = None
     exclude_tier_regex: Optional[str] = None
+    exclude_annotation_path_regex: Optional[str] = None
+    merge_same_time_annotations: bool = False
+    annotation_joiner: str = ""
     min_dur_ms: int = 200
     max_dur_ms: int = 30000
     session_id_from: str = "parent_dir"  # "parent_dir" | "recording_id"
@@ -96,7 +105,10 @@ def detect_speech_tiers(
 
         annots = eaf_obj.get_annotation_data_for_tier(tier_name)
         speech_like = 0
-        for _, _, text in annots:
+        for annotation in annots:
+            # pympi returns three fields for alignable annotations and may
+            # append a reference identifier for dependent tiers.
+            _, _, text = annotation[:3]
             if text is None:
                 continue
             if len(re.findall(r"\w", str(text))) >= min_chars:
@@ -117,7 +129,56 @@ def _session_id_from_path(eaf_path: Path, mode: str) -> str:
     raise ValueError(f"Unknown session_id_from: {mode}")
 
 
+def find_eaf_files(
+    annotations_dir: Path, *, exclude_path_regex: Optional[str] = None
+) -> List[Path]:
+    """Find EAFs deterministically, optionally excluding copied annotation trees."""
+    eaf_files = sorted(annotations_dir.rglob("*.eaf"))
+    if exclude_path_regex:
+        path_re = re.compile(exclude_path_regex, re.IGNORECASE)
+        eaf_files = [path for path in eaf_files if not path_re.search(str(path))]
+    return eaf_files
+
+
+def has_annotation_text(text: object) -> bool:
+    """Whether an edition retained a usable annotation after normalisation."""
+    return bool("" if text is None else str(text).strip())
+
+
+def tier_annotations(
+    eaf_obj: pympi.Elan.Eaf,
+    tier_name: str,
+    *,
+    merge_same_time: bool = False,
+    joiner: str = "",
+) -> List[Tuple[int, int, str]]:
+    """Return alignable rows, optionally joining reference-tier words."""
+    rows = [
+        tuple(annotation[:3])
+        for annotation in eaf_obj.get_annotation_data_for_tier(tier_name)
+    ]
+    if not merge_same_time:
+        return rows
+
+    grouped: dict[Tuple[int, int], List[str]] = {}
+    for start_ms, end_ms, text in rows:
+        key = (start_ms, end_ms)
+        if has_annotation_text(text):
+            grouped.setdefault(key, []).append(str(text).strip())
+        else:
+            grouped.setdefault(key, [])
+    return [
+        (start_ms, end_ms, joiner.join(parts))
+        for (start_ms, end_ms), parts in grouped.items()
+    ]
+
+
 def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    if pympi is None or AudioSegment is None:
+        raise ModuleNotFoundError(
+            "EAF ingestion requires pympi-ling and pydub; install requirements.txt "
+            "in the shared ASR environment."
+        )
     annotations_dir = Path(cfg.annotations_dir).expanduser()
     audio_root = Path(cfg.audio_root).expanduser()
     clips_dir = Path(cfg.clips_dir).expanduser()
@@ -127,7 +188,9 @@ def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]
     seg_infos: List[dict] = []
     skip_infos: List[dict] = []
 
-    eaf_files = list(annotations_dir.rglob("*.eaf"))
+    eaf_files = find_eaf_files(
+        annotations_dir, exclude_path_regex=cfg.exclude_annotation_path_regex
+    )
     if not eaf_files:
         raise ValueError(f"No .eaf files found under {annotations_dir}")
 
@@ -174,7 +237,12 @@ def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]
         session_id = _session_id_from_path(eaf_path, cfg.session_id_from)
 
         for tier_name in tiers:
-            for start_ms, end_ms, text in eaf_obj.get_annotation_data_for_tier(tier_name):
+            for start_ms, end_ms, text in tier_annotations(
+                eaf_obj,
+                tier_name,
+                merge_same_time=cfg.merge_same_time_annotations,
+                joiner=cfg.annotation_joiner,
+            ):
                 if start_ms is None or end_ms is None:
                     skip_infos.append(
                         {
@@ -218,7 +286,7 @@ def ingest_eaf_directory(cfg: IngestConfig) -> Tuple[pd.DataFrame, pd.DataFrame]
                     continue
 
                 source_text = "" if text is None else str(text)
-                if not source_text.strip():
+                if not has_annotation_text(source_text):
                     skip_infos.append(
                         {
                             "eaf_path": str(eaf_path),
