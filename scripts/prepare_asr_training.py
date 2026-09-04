@@ -50,6 +50,9 @@ def main() -> None:
 
     ap.add_argument("--include_tier_regex", type=str, default=None)
     ap.add_argument("--exclude_tier_regex", type=str, default=None)
+    ap.add_argument("--exclude_annotation_path_regex", type=str, default=None)
+    ap.add_argument("--merge_same_time_annotations", action="store_true")
+    ap.add_argument("--annotation_joiner", type=str, default="")
 
     ap.add_argument("--min_dur_ms", type=int, default=200)
     ap.add_argument("--max_dur_ms", type=int, default=30000)
@@ -113,6 +116,9 @@ def main() -> None:
             clips_dir=str(clips_dir),
             include_tier_regex=args.include_tier_regex,
             exclude_tier_regex=args.exclude_tier_regex,
+            exclude_annotation_path_regex=args.exclude_annotation_path_regex,
+            merge_same_time_annotations=args.merge_same_time_annotations,
+            annotation_joiner=args.annotation_joiner,
             min_dur_ms=args.min_dur_ms,
             max_dur_ms=args.max_dur_ms,
             session_id_from=args.session_id_from,

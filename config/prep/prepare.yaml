@@ -9,8 +9,11 @@ clips_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01
 logs_dir: "./logs/prep/yonghe_qiang"
 
 # Tier selection
-include_tier_regex: null
-exclude_tier_regex: null
+include_tier_regex: null # What tiers from the files do you want to specifically include, and only those will be included.
+exclude_tier_regex: null # What tiers from the files do you want to specifically exclude, and only those will be excluded.
+exclude_annotation_path_regex: null # What paths to the .eaf files do you want to specifically exclude, and only those will be excluded. Remember, we allow for nested folders to be processed.
+merge_same_time_annotations: false # Combine annotations that have the same start and end times into a single annotation, joined by the annotation_joiner string.
+annotation_joiner: " " # When merging annotations, what string should be used to join them together? 
 
 # Segment limits
 min_dur_ms: 200
