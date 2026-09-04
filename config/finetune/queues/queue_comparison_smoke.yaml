@@ -1,0 +1,19 @@
+queue_name: normalisation_model_comparison_smoke
+stop_on_failure: false
+
+# One CTC and one Seq2Seq job per language. Run with --smoke only after the
+# corresponding preparation manifests exist; this is deliberately separate
+# from the 45-job production queue.
+jobs:
+  - name: japhug-full-mms-ctc
+    config: ../comparison/japhug_full_mms_ctc.yaml
+  - name: japhug-full-ipa-whisper-base
+    config: ../comparison/japhug_full_ipa_whisper_base.yaml
+  - name: yonghe_qiang-full-mms-ctc
+    config: ../comparison/yonghe_qiang_full_mms_ctc.yaml
+  - name: yonghe_qiang-full-ipa-whisper-base
+    config: ../comparison/yonghe_qiang_full_ipa_whisper_base.yaml
+  - name: yongning_na-full-mms-ctc
+    config: ../comparison/yongning_na_full_mms_ctc.yaml
+  - name: yongning_na-full-ipa-whisper-base
+    config: ../comparison/yongning_na_full_ipa_whisper_base.yaml
