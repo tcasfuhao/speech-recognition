@@ -62,7 +62,7 @@ The choice is saved with each trained model. Inference reads it automatically; `
 python scripts/prepare_asr_training.py --config config/prep/prepare_yq.yaml
 ```
 
-Stage 1 writes clips to `<data_root>/processed/splits/wav/` and writes local `metadata.csv` and `skip_metadata.csv` logs. Stage 2 writes the local 80/10/10 train, development, and test manifests plus `split_summary.json`.
+Stage 1 writes clips to `<data_root>/processed/splits/wav/` and writes local `metadata.csv` and `skip_metadata.csv` logs. Stage 2 first creates the local 80/10/10 train, development, and test splits, then deterministically shuffles and caps each split at its configured duration target while retaining the final clip that crosses the target. A null target keeps the complete split. The manifests and their configured and retained durations are recorded in `split_summary.json`.
 
 Stages can be selected independently:
 
@@ -111,7 +111,9 @@ python -m src.finetune.train_queue --resume logs/queues/normalisation_model_comp
 
 #### 45-run normalisation comparison
 
-The comparison configuration covers Japhug, Yonghe-Qiang, and Yongning-Na for the five completed editions (`unnormalised`, `tones`, `map-chars`, `brackets`, and `full`) and three models (MMS CTC, XLS-R CTC, and IPA-Whisper Base). Preparation is intentionally per language-edition: every config extracts only the selected tier, discards texts blanked by that edition, and creates its own deterministic utterance-level 80/10/10 manifests. Different utterances from one recording may occur in different splits; individual audio clips never overlap.
+The comparison configuration covers Japhug, Yonghe-Qiang, and Yongning-Na for the five completed editions (`unnormalised`, `tones`, `map-chars`, `brackets`, and `full`) and three models (MMS CTC, XLS-R CTC, and IPA-Whisper Base). Preparation is intentionally per language-edition: every config extracts only the selected tier, discards texts blanked by that edition, and creates its own deterministic utterance-level 80/10/10 splits. Japhug and Yonghe-Qiang manifests are then capped at approximately 2 hours of training audio and 12 minutes each of development and test audio; Yongning-Na keeps its complete split. Different utterances from one recording may occur in different splits; individual audio clips never overlap.
+
+All models that consume a language-edition manifest use the same capped, deterministic rows. Duration limits belong only in preparation configuration; no model-specific cap is added to CTC, Whisper, or Granite fine-tuning YAMLs.
 
 ```bash
 # Prepare all 15 language-edition manifest sets.
