@@ -52,6 +52,12 @@ def validate_config(config: dict[str, Any], *, check_audio: bool = True) -> dict
         errors.append(f"backend must be one of {sorted(SUPPORTED_BACKENDS)}")
     if not isinstance(config.get("remove_spaces", True), bool):
         errors.append("remove_spaces must be true or false")
+    if "eval_accumulation_steps" in config:
+        try:
+            if int(config["eval_accumulation_steps"]) < 1:
+                errors.append("eval_accumulation_steps must be at least 1")
+        except (TypeError, ValueError):
+            errors.append("eval_accumulation_steps must be an integer")
     if not isinstance(config.get("allow_recording_overlap", False), bool):
         errors.append("allow_recording_overlap must be true or false")
 
