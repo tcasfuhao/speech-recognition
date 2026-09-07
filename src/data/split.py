@@ -11,6 +11,13 @@ from typing import Dict, Optional, Tuple
 import pandas as pd
 
 
+DURATION_SPLIT_SEED_OFFSETS = {
+    "train": 0,
+    "dev": 1,
+    "test": 2,
+}
+
+
 @dataclass(frozen=True)
 class SplitRatios:
     train: float
@@ -100,6 +107,80 @@ def split_by_group(
     return train_df, dev_df, test_df
 
 
+def duration_seconds(df: pd.DataFrame, dur_col: str) -> pd.Series:
+    """Return a manifest duration column converted to seconds."""
+    if dur_col not in df.columns:
+        raise ValueError(
+            f"Duration column '{dur_col}' not found in columns: {list(df.columns)}"
+        )
+
+    durations = pd.to_numeric(df[dur_col], errors="raise").astype(float)
+    if durations.isna().any():
+        raise ValueError(f"Duration column '{dur_col}' contains missing values.")
+    if (durations < 0).any():
+        raise ValueError(f"Duration column '{dur_col}' contains negative values.")
+
+    if dur_col.lower().endswith(("ms", "msec")):
+        durations = durations / 1000.0
+    return durations
+
+
+def select_duration_budget(
+    df: pd.DataFrame,
+    *,
+    dur_col: str,
+    target_duration_sec: Optional[float],
+    seed: int,
+) -> pd.DataFrame:
+    """Deterministically select shuffled rows through the target duration.
+
+    The row that reaches or crosses the target is retained. A null target, or a
+    target at least as large as the available audio, returns the split unchanged.
+    """
+    if target_duration_sec is None:
+        return df.copy()
+    if target_duration_sec <= 0:
+        raise ValueError("target_duration_sec must be greater than zero or null.")
+
+    durations_sec = duration_seconds(df, dur_col)
+    if durations_sec.sum() <= target_duration_sec:
+        return df.copy()
+
+    shuffled = df.sample(frac=1, random_state=seed)
+    shuffled_durations = duration_seconds(shuffled, dur_col)
+    crossing_position = int(
+        (shuffled_durations.cumsum() >= target_duration_sec).to_numpy().argmax()
+    )
+    return shuffled.iloc[: crossing_position + 1].reset_index(drop=True).copy()
+
+
+def apply_duration_budgets(
+    *,
+    train_df: pd.DataFrame,
+    dev_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    dur_col: str,
+    split_seed: int,
+    target_train_duration_sec: Optional[float] = None,
+    target_dev_duration_sec: Optional[float] = None,
+    target_test_duration_sec: Optional[float] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Apply independent deterministic duration targets to existing splits."""
+    return tuple(
+        select_duration_budget(
+            split_df,
+            dur_col=dur_col,
+            target_duration_sec=target,
+            seed=split_seed + DURATION_SPLIT_SEED_OFFSETS[split_name],
+        )
+        for split_name, split_df, target in (
+            ("train", train_df, target_train_duration_sec),
+            ("dev", dev_df, target_dev_duration_sec),
+            ("test", test_df, target_test_duration_sec),
+        )
+    )
+
+
 def build_split_summary(
     *,
     train_df: pd.DataFrame,
@@ -127,9 +208,7 @@ def build_split_summary(
 
     if dur_col and dur_col in train_df.columns:
         def _sum_sec(df: pd.DataFrame) -> float:
-            if dur_col.lower().endswith(("ms", "msec")):
-                return float(df[dur_col].sum() / 1000.0)
-            return float(df[dur_col].sum())
+            return float(duration_seconds(df, dur_col).sum())
 
         summary["train_total_sec"] = _sum_sec(train_df)
         summary["dev_total_sec"] = _sum_sec(dev_df)
