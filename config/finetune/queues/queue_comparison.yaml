@@ -10,84 +10,86 @@ jobs:
     config: ../comparison/japhug_unnormalised_xlsr_ctc.yaml
   - name: japhug-unnormalised-ipa_whisper_base
     config: ../comparison/japhug_unnormalised_ipa_whisper_base.yaml
-  - name: japhug-tones-mms_ctc
-    config: ../comparison/japhug_tones_mms_ctc.yaml
-  - name: japhug-tones-xlsr_ctc
-    config: ../comparison/japhug_tones_xlsr_ctc.yaml
-  - name: japhug-tones-ipa_whisper_base
-    config: ../comparison/japhug_tones_ipa_whisper_base.yaml
-  - name: japhug-map-chars-mms_ctc
-    config: ../comparison/japhug_map-chars_mms_ctc.yaml
-  - name: japhug-map-chars-xlsr_ctc
-    config: ../comparison/japhug_map-chars_xlsr_ctc.yaml
-  - name: japhug-map-chars-ipa_whisper_base
-    config: ../comparison/japhug_map-chars_ipa_whisper_base.yaml
-  - name: japhug-brackets-mms_ctc
-    config: ../comparison/japhug_brackets_mms_ctc.yaml
-  - name: japhug-brackets-xlsr_ctc
-    config: ../comparison/japhug_brackets_xlsr_ctc.yaml
-  - name: japhug-brackets-ipa_whisper_base
-    config: ../comparison/japhug_brackets_ipa_whisper_base.yaml
+  # - name: japhug-tones-mms_ctc
+  #   config: ../comparison/japhug_tones_mms_ctc.yaml
+  # - name: japhug-tones-xlsr_ctc
+  #   config: ../comparison/japhug_tones_xlsr_ctc.yaml
+  # - name: japhug-tones-ipa_whisper_base
+  #   config: ../comparison/japhug_tones_ipa_whisper_base.yaml
+  # - name: japhug-map-chars-mms_ctc
+  #   config: ../comparison/japhug_map-chars_mms_ctc.yaml
+  # - name: japhug-map-chars-xlsr_ctc
+  #   config: ../comparison/japhug_map-chars_xlsr_ctc.yaml
+  # - name: japhug-map-chars-ipa_whisper_base
+  #   config: ../comparison/japhug_map-chars_ipa_whisper_base.yaml
+  # - name: japhug-brackets-mms_ctc
+  #   config: ../comparison/japhug_brackets_mms_ctc.yaml
+  # - name: japhug-brackets-xlsr_ctc
+  #   config: ../comparison/japhug_brackets_xlsr_ctc.yaml
+  # - name: japhug-brackets-ipa_whisper_base
+  #   config: ../comparison/japhug_brackets_ipa_whisper_base.yaml
   - name: japhug-full-mms_ctc
     config: ../comparison/japhug_full_mms_ctc.yaml
   - name: japhug-full-xlsr_ctc
     config: ../comparison/japhug_full_xlsr_ctc.yaml
   - name: japhug-full-ipa_whisper_base
     config: ../comparison/japhug_full_ipa_whisper_base.yaml
+
   - name: yonghe_qiang-unnormalised-mms_ctc
     config: ../comparison/yonghe_qiang_unnormalised_mms_ctc.yaml
   - name: yonghe_qiang-unnormalised-xlsr_ctc
     config: ../comparison/yonghe_qiang_unnormalised_xlsr_ctc.yaml
   - name: yonghe_qiang-unnormalised-ipa_whisper_base
     config: ../comparison/yonghe_qiang_unnormalised_ipa_whisper_base.yaml
-  - name: yonghe_qiang-tones-mms_ctc
-    config: ../comparison/yonghe_qiang_tones_mms_ctc.yaml
-  - name: yonghe_qiang-tones-xlsr_ctc
-    config: ../comparison/yonghe_qiang_tones_xlsr_ctc.yaml
-  - name: yonghe_qiang-tones-ipa_whisper_base
-    config: ../comparison/yonghe_qiang_tones_ipa_whisper_base.yaml
-  - name: yonghe_qiang-map-chars-mms_ctc
-    config: ../comparison/yonghe_qiang_map-chars_mms_ctc.yaml
-  - name: yonghe_qiang-map-chars-xlsr_ctc
-    config: ../comparison/yonghe_qiang_map-chars_xlsr_ctc.yaml
-  - name: yonghe_qiang-map-chars-ipa_whisper_base
-    config: ../comparison/yonghe_qiang_map-chars_ipa_whisper_base.yaml
-  - name: yonghe_qiang-brackets-mms_ctc
-    config: ../comparison/yonghe_qiang_brackets_mms_ctc.yaml
-  - name: yonghe_qiang-brackets-xlsr_ctc
-    config: ../comparison/yonghe_qiang_brackets_xlsr_ctc.yaml
-  - name: yonghe_qiang-brackets-ipa_whisper_base
-    config: ../comparison/yonghe_qiang_brackets_ipa_whisper_base.yaml
+  # - name: yonghe_qiang-tones-mms_ctc
+  #   config: ../comparison/yonghe_qiang_tones_mms_ctc.yaml
+  # - name: yonghe_qiang-tones-xlsr_ctc
+  #   config: ../comparison/yonghe_qiang_tones_xlsr_ctc.yaml
+  # - name: yonghe_qiang-tones-ipa_whisper_base
+  #   config: ../comparison/yonghe_qiang_tones_ipa_whisper_base.yaml
+  # - name: yonghe_qiang-map-chars-mms_ctc
+  #   config: ../comparison/yonghe_qiang_map-chars_mms_ctc.yaml
+  # - name: yonghe_qiang-map-chars-xlsr_ctc
+  #   config: ../comparison/yonghe_qiang_map-chars_xlsr_ctc.yaml
+  # - name: yonghe_qiang-map-chars-ipa_whisper_base
+  #   config: ../comparison/yonghe_qiang_map-chars_ipa_whisper_base.yaml
+  # - name: yonghe_qiang-brackets-mms_ctc
+  #   config: ../comparison/yonghe_qiang_brackets_mms_ctc.yaml
+  # - name: yonghe_qiang-brackets-xlsr_ctc
+  #   config: ../comparison/yonghe_qiang_brackets_xlsr_ctc.yaml
+  # - name: yonghe_qiang-brackets-ipa_whisper_base
+  #   config: ../comparison/yonghe_qiang_brackets_ipa_whisper_base.yaml
   - name: yonghe_qiang-full-mms_ctc
     config: ../comparison/yonghe_qiang_full_mms_ctc.yaml
   - name: yonghe_qiang-full-xlsr_ctc
     config: ../comparison/yonghe_qiang_full_xlsr_ctc.yaml
   - name: yonghe_qiang-full-ipa_whisper_base
     config: ../comparison/yonghe_qiang_full_ipa_whisper_base.yaml
+    
   - name: yongning_na-unnormalised-mms_ctc
     config: ../comparison/yongning_na_unnormalised_mms_ctc.yaml
   - name: yongning_na-unnormalised-xlsr_ctc
     config: ../comparison/yongning_na_unnormalised_xlsr_ctc.yaml
   - name: yongning_na-unnormalised-ipa_whisper_base
     config: ../comparison/yongning_na_unnormalised_ipa_whisper_base.yaml
-  - name: yongning_na-tones-mms_ctc
-    config: ../comparison/yongning_na_tones_mms_ctc.yaml
-  - name: yongning_na-tones-xlsr_ctc
-    config: ../comparison/yongning_na_tones_xlsr_ctc.yaml
-  - name: yongning_na-tones-ipa_whisper_base
-    config: ../comparison/yongning_na_tones_ipa_whisper_base.yaml
-  - name: yongning_na-map-chars-mms_ctc
-    config: ../comparison/yongning_na_map-chars_mms_ctc.yaml
-  - name: yongning_na-map-chars-xlsr_ctc
-    config: ../comparison/yongning_na_map-chars_xlsr_ctc.yaml
-  - name: yongning_na-map-chars-ipa_whisper_base
-    config: ../comparison/yongning_na_map-chars_ipa_whisper_base.yaml
-  - name: yongning_na-brackets-mms_ctc
-    config: ../comparison/yongning_na_brackets_mms_ctc.yaml
-  - name: yongning_na-brackets-xlsr_ctc
-    config: ../comparison/yongning_na_brackets_xlsr_ctc.yaml
-  - name: yongning_na-brackets-ipa_whisper_base
-    config: ../comparison/yongning_na_brackets_ipa_whisper_base.yaml
+  # - name: yongning_na-tones-mms_ctc
+  #   config: ../comparison/yongning_na_tones_mms_ctc.yaml
+  # - name: yongning_na-tones-xlsr_ctc
+  #   config: ../comparison/yongning_na_tones_xlsr_ctc.yaml
+  # - name: yongning_na-tones-ipa_whisper_base
+  #   config: ../comparison/yongning_na_tones_ipa_whisper_base.yaml
+  # - name: yongning_na-map-chars-mms_ctc
+  #   config: ../comparison/yongning_na_map-chars_mms_ctc.yaml
+  # - name: yongning_na-map-chars-xlsr_ctc
+  #   config: ../comparison/yongning_na_map-chars_xlsr_ctc.yaml
+  # - name: yongning_na-map-chars-ipa_whisper_base
+  #   config: ../comparison/yongning_na_map-chars_ipa_whisper_base.yaml
+  # - name: yongning_na-brackets-mms_ctc
+  #   config: ../comparison/yongning_na_brackets_mms_ctc.yaml
+  # - name: yongning_na-brackets-xlsr_ctc
+  #   config: ../comparison/yongning_na_brackets_xlsr_ctc.yaml
+  # - name: yongning_na-brackets-ipa_whisper_base
+  #   config: ../comparison/yongning_na_brackets_ipa_whisper_base.yaml
   - name: yongning_na-full-mms_ctc
     config: ../comparison/yongning_na_full_mms_ctc.yaml
   - name: yongning_na-full-xlsr_ctc
