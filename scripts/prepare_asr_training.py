@@ -19,6 +19,7 @@ import yaml
 from src.data import schema
 from src.data.split import (
     SplitRatios,
+    apply_duration_budgets,
     build_split_summary,
     save_split_summary,
     split_by_group,
@@ -66,6 +67,9 @@ def main() -> None:
     ap.add_argument("--dev_ratio", type=float, default=0.1)
     ap.add_argument("--test_ratio", type=float, default=0.1)
     ap.add_argument("--allow_row_fallback", action="store_true")
+    ap.add_argument("--target_train_duration_sec", type=float, default=None)
+    ap.add_argument("--target_dev_duration_sec", type=float, default=None)
+    ap.add_argument("--target_test_duration_sec", type=float, default=None)
 
     args = ap.parse_args()
 
@@ -174,6 +178,28 @@ def main() -> None:
                 df, seed=args.split_seed, ratios=ratios
             )
 
+        duration_targets = {
+            "train": args.target_train_duration_sec,
+            "dev": args.target_dev_duration_sec,
+            "test": args.target_test_duration_sec,
+        }
+        if any(target is not None for target in duration_targets.values()):
+            if dur_col is None:
+                raise ValueError(
+                    "A duration target was configured, but metadata.csv has no "
+                    f"recognized duration column: {schema.DUR_COL_CANDIDATES}"
+                )
+            train_df, dev_df, test_df = apply_duration_budgets(
+                train_df=train_df,
+                dev_df=dev_df,
+                test_df=test_df,
+                dur_col=dur_col,
+                split_seed=args.split_seed,
+                target_train_duration_sec=args.target_train_duration_sec,
+                target_dev_duration_sec=args.target_dev_duration_sec,
+                target_test_duration_sec=args.target_test_duration_sec,
+            )
+
         splits_dir = logs_dir / "splits"
         splits_dir.mkdir(parents=True, exist_ok=True)
         train_df.to_csv(splits_dir / "train.csv", index=False)
@@ -193,6 +219,9 @@ def main() -> None:
             "dev": ratios.dev,
             "test": ratios.test,
         }
+        summary["target_train_duration_sec"] = args.target_train_duration_sec
+        summary["target_dev_duration_sec"] = args.target_dev_duration_sec
+        summary["target_test_duration_sec"] = args.target_test_duration_sec
 
         save_split_summary(str(splits_dir / "split_summary.json"), summary)
 
