@@ -136,7 +136,14 @@ class DataCollatorCTC:
 
 def compute_metrics_factory(processor: Wav2Vec2Processor):
     def compute_metrics(pred):
-        pred_ids = np.argmax(pred.predictions, axis=-1)
+        predictions = pred.predictions
+        if isinstance(predictions, tuple):
+            predictions = predictions[0]
+        pred_ids = (
+            np.argmax(predictions, axis=-1)
+            if np.asarray(predictions).ndim == 3
+            else predictions
+        )
         pred_str = processor.batch_decode(pred_ids)
 
         label_ids = pred.label_ids.copy()
@@ -164,6 +171,13 @@ def compute_metrics_factory(processor: Wav2Vec2Processor):
         }
 
     return compute_metrics
+
+
+def preprocess_logits_for_metrics(logits, _labels):
+    """Keep CTC evaluation memory bounded by retaining token IDs, not logits."""
+    if isinstance(logits, tuple):
+        logits = logits[0]
+    return torch.argmax(logits, dim=-1)
 
 
 def sanity_check_tokenizer(processor, texts, max_examples=10):
@@ -233,6 +247,7 @@ def main():
     ap.add_argument("--train_seed", type=int, default=42)
     ap.add_argument("--batch_size", type=int, default=1)
     ap.add_argument("--eval_batch_size", type=int, default=1)
+    ap.add_argument("--eval_accumulation_steps", type=int, default=1)
     ap.add_argument("--grad_accum_steps", type=int, default=8)
     ap.add_argument("--epochs", type=int, default=15)
     ap.add_argument("--lr", type=float, default=5e-5)
@@ -413,6 +428,7 @@ def main():
         output_dir=str(out_dir / "checkpoints"),
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
+        eval_accumulation_steps=args.eval_accumulation_steps,
         gradient_accumulation_steps=args.grad_accum_steps,
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -441,6 +457,7 @@ def main():
         data_collator=collator,
         processing_class=processor,
         compute_metrics=compute_metrics_factory(processor),
+        preprocess_logits_for_metrics=preprocess_logits_for_metrics,
         callbacks=[
             EarlyStoppingCallback(early_stopping_patience=args.patience)
         ],
