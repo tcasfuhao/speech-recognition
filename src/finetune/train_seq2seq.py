@@ -227,6 +227,7 @@ def main():
     ap.add_argument("--train_seed", type=int, default=42)
     ap.add_argument("--batch_size", type=int, default=1)
     ap.add_argument("--eval_batch_size", type=int, default=1)
+    ap.add_argument("--eval_accumulation_steps", type=int, default=1)
     ap.add_argument("--grad_accum_steps", type=int, default=8)
     ap.add_argument("--epochs", type=int, default=15)
     ap.add_argument("--lr", type=float, default=5e-5)
@@ -386,6 +387,7 @@ def main():
         output_dir=str(out_dir / "checkpoints"),
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
+        eval_accumulation_steps=args.eval_accumulation_steps,
         gradient_accumulation_steps=args.grad_accum_steps,
         eval_strategy="epoch",
         save_strategy="epoch",
