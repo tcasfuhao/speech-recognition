@@ -24,6 +24,10 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _new_run_id() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
+
 def _safe_name(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "_", value.strip()).strip("._")
     if not cleaned:
@@ -86,13 +90,24 @@ def load_queue(path: str | Path) -> dict[str, Any]:
     }
 
 
-def validate_queue(queue: dict[str, Any]) -> list[dict[str, Any]]:
+def validate_queue(
+    queue: dict[str, Any],
+    *,
+    validation_batch_id: str | None = None,
+    validation_phase: str = "preflight",
+) -> list[dict[str, Any]]:
+    validation_batch_id = validation_batch_id or _new_run_id()
     validated: list[dict[str, Any]] = []
     errors: list[str] = []
     for job in queue["jobs"]:
         config = load_config(job["config"])
         report = validate_config(config)
-        report_path = write_validation_report(config, report)
+        report_path = write_validation_report(
+            config,
+            report,
+            batch_id=validation_batch_id,
+            phase=validation_phase,
+        )
         item = {
             **job,
             "backend": config.get("backend"),
@@ -112,7 +127,15 @@ def validate_pending_jobs(state: dict[str, Any]) -> None:
     pending = [job for job in state["jobs"] if job["status"] != "succeeded"]
     if not pending:
         return
-    validated = validate_queue({"jobs": pending})
+    validation_batch_id = state.get("validation_batch_id")
+    if not validation_batch_id:
+        validation_batch_id = Path(state["queue_run_dir"]).name
+        state["validation_batch_id"] = validation_batch_id
+    validated = validate_queue(
+        {"jobs": pending},
+        validation_batch_id=validation_batch_id,
+        validation_phase="resume-preflight",
+    )
     by_name = {job["name"]: job for job in validated}
     for job in pending:
         details = by_name[job["name"]]
@@ -120,15 +143,20 @@ def validate_pending_jobs(state: dict[str, Any]) -> None:
             job[key] = details[key]
 
 
-def _new_state(queue: dict[str, Any], jobs: list[dict[str, Any]], smoke: bool) -> tuple[dict[str, Any], Path]:
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    run_dir = QUEUE_LOG_ROOT / queue["safe_queue_name"] / stamp
+def _new_state(
+    queue: dict[str, Any],
+    jobs: list[dict[str, Any]],
+    smoke: bool,
+    run_id: str,
+) -> tuple[dict[str, Any], Path]:
+    run_dir = QUEUE_LOG_ROOT / queue["safe_queue_name"] / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
     state = {
         "schema_version": 1,
         "queue_name": queue["queue_name"],
         "queue_config": queue["queue_config"],
         "queue_run_dir": str(run_dir),
+        "validation_batch_id": run_id,
         "stop_on_failure": queue["stop_on_failure"],
         "smoke": smoke,
         "status": "pending",
@@ -188,6 +216,24 @@ def _completed_output(backend: str, before: dict[Path, int]) -> str:
     return str(output_dir)
 
 
+def _validation_snapshot(directory: Path) -> dict[Path, int]:
+    if not directory.is_dir():
+        return {}
+    return {path.resolve(): path.stat().st_mtime_ns for path in directory.glob("*.json")}
+
+
+def _completed_validation_report(directory: Path, before: dict[Path, int]) -> str | None:
+    after = _validation_snapshot(directory)
+    changed = [
+        path
+        for path, modified in after.items()
+        if path not in before or before[path] != modified
+    ]
+    if len(changed) == 1:
+        return str(changed[0])
+    return None
+
+
 def _run_child(command: list[str], log_path: Path) -> int:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as log:
@@ -239,7 +285,20 @@ def run_state(state: dict[str, Any], run_dir: Path, *, continue_on_error: bool =
         _atomic_json(state_path, state)
         print(f"Starting job {job['order']}/{len(state['jobs'])}: {job['name']}", flush=True)
         before = _experiment_snapshot(job["backend"])
+        validation_directory = Path(job["validation_report"]).parent
+        validation_before = _validation_snapshot(validation_directory)
         command = [sys.executable, "-m", "src.finetune.train_asr", "--config", job["config"]]
+        validation_batch_id = state.get("validation_batch_id") or Path(
+            state["queue_run_dir"]
+        ).name
+        command.extend(
+            [
+                "--validation-batch-id",
+                validation_batch_id,
+                "--validation-phase",
+                "job-start",
+            ]
+        )
         if state.get("smoke", False):
             command.append("--smoke")
         started = datetime.now(timezone.utc)
@@ -263,6 +322,11 @@ def run_state(state: dict[str, Any], run_dir: Path, *, continue_on_error: bool =
             failed = True
             print(f"Job {job['order']} failed: {exc}", file=sys.stderr, flush=True)
         finally:
+            latest_validation = _completed_validation_report(
+                validation_directory, validation_before
+            )
+            if latest_validation:
+                job["validation_report"] = latest_validation
             finished = datetime.now(timezone.utc)
             job["finished_at"] = finished.isoformat()
             job["duration_seconds"] = round((finished - started).total_seconds(), 3)
@@ -309,11 +373,13 @@ def main() -> None:
         raise SystemExit(exit_code)
 
     queue = load_queue(args.config)
-    jobs = validate_queue(queue)
+    run_id = _new_run_id()
+    jobs = validate_queue(queue, validation_batch_id=run_id)
     print(f"Validation passed for {len(jobs)} queued jobs.", flush=True)
     if args.validate_only:
+        print(f"Validation batch: {run_id}", flush=True)
         return
-    state, run_dir = _new_state(queue, jobs, args.smoke)
+    state, run_dir = _new_state(queue, jobs, args.smoke, run_id)
     print(f"Queue run: {run_dir}", flush=True)
     try:
         exit_code = run_state(state, run_dir, continue_on_error=args.continue_on_error)
