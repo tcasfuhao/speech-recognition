@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -166,13 +168,50 @@ def validate_config(config: dict[str, Any], *, check_audio: bool = True) -> dict
     return report
 
 
-def write_validation_report(config: dict[str, Any], report: dict[str, Any]) -> Path:
+def _validation_component(value: str, label: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", value):
+        raise ValueError(f"{label} must contain only letters, numbers, dots, dashes, or underscores")
+    return value
+
+
+def _timestamp() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
+
+def _timestamped_validation_dir(logs_dir: Path, batch_id: str) -> Path:
+    """Insert comparison batch IDs before language/edition path components."""
+    parts = logs_dir.parts
+    comparison_indexes = [index for index, part in enumerate(parts) if part == "comparison"]
+    if comparison_indexes:
+        index = comparison_indexes[-1]
+        return Path(*parts[: index + 1]) / batch_id / Path(*parts[index + 1 :])
+    return logs_dir / batch_id
+
+
+def write_validation_report(
+    config: dict[str, Any],
+    report: dict[str, Any],
+    *,
+    batch_id: str | None = None,
+    phase: str = "standalone",
+) -> Path:
     config_path = Path(config["_config_path"])
     logs_dir = Path(config.get("validation_dir", "logs/validation")).expanduser()
+    batch_id = _validation_component(batch_id or _timestamp(), "validation batch ID")
+    phase = _validation_component(phase, "validation phase")
+    logs_dir = _timestamped_validation_dir(logs_dir, batch_id)
     logs_dir.mkdir(parents=True, exist_ok=True)
-    target = logs_dir / f"{config.get('backend', 'unknown')}__{config_path.stem}.json"
-    target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    return target
+    event_id = _timestamp()
+    stem = f"{event_id}__{phase}__{config.get('backend', 'unknown')}__{config_path.stem}"
+    for suffix in ("", *(f"__{index:02d}" for index in range(1, 100))):
+        target = logs_dir / f"{stem}{suffix}.json"
+        try:
+            with target.open("x", encoding="utf-8") as handle:
+                json.dump(report, handle, ensure_ascii=False, indent=2)
+            return target
+        except FileExistsError:
+            continue
+    raise RuntimeError(f"Could not allocate a unique validation report beneath {logs_dir}")
 
 
 def write_experiment_summary(backend: str, run_name: str, payload: dict[str, Any]) -> Path:
