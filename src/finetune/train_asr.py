@@ -16,7 +16,7 @@ MODULES = {
     "granite": "src.finetune.train_granite",
 }
 
-
+# The following def is for the smoke asr runs. They point the config files to those in the logs/smoke/configs, but only if the specific config file. Additionally, in that config file, it does not matter what epoch parameters are chosen, they will be overridden to 1 epoch, and the max_train_samples and max_eval_samples will be overridden.
 def _smoke_config(config: dict, config_path: Path) -> Path:
     smoke = {key: value for key, value in config.items() if not key.startswith("_")}
     smoke["epochs"] = 1
@@ -34,12 +34,19 @@ def main() -> None:
     parser.add_argument("--config", required=True)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--smoke", action="store_true")
+    parser.add_argument("--validation-batch-id", default=None)
+    parser.add_argument("--validation-phase", default="standalone")
     args = parser.parse_args()
 
     config_path = Path(args.config).expanduser().resolve()
     config = load_config(config_path)
     report = validate_config(config)
-    report_path = write_validation_report(config, report)
+    report_path = write_validation_report(
+        config,
+        report,
+        batch_id=args.validation_batch_id,
+        phase=args.validation_phase,
+    )
     if not report["valid"]:
         raise SystemExit("Configuration validation failed before run creation:\n- " + "\n- ".join(report["errors"]))
     print(f"Validation passed; report: {report_path}", flush=True)
