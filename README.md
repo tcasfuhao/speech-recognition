@@ -97,13 +97,13 @@ The normalisation comparison queue runs MMS CTC, XLS-R CTC, and IPA-Whisper Base
 
 ```bash
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --validate-only
-python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison_smoke.yaml --smoke
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --smoke
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml
 ```
 
 Queue YAML paths are resolved relative to the queue file. Job names and training configs must be unique. By default, a failure stops the queue; set `stop_on_failure: false` in YAML or pass `--continue-on-error` to attempt the remaining jobs.
 
-Each run writes `queue_state.json` and one terminal log per job beneath `logs/queues/<queue-name>/<timestamp>/`. The state records the model output directory produced by each trainer. Resume an interrupted or failed run explicitly; successful jobs are skipped and incomplete jobs restart from their original training configuration:
+Each run writes `queue_state.json` and one terminal log per job beneath `logs/queues/<queue-name>/<timestamp>/`. Comparison validation reports use the same batch ID beneath `logs/validation/comparison/<timestamp>/<language>/<edition>/`; preflight, job-start, and resumed validations receive unique timestamped filenames and are never overwritten. Standalone validation creates its own timestamped batch. The state records the validation batch and model output directory produced by each trainer. Resume an interrupted or failed run explicitly; successful jobs are skipped and incomplete jobs restart from their original training configuration:
 
 ```bash
 python -m src.finetune.train_queue --resume logs/queues/normalisation_model_comparison/<timestamp>
@@ -123,9 +123,9 @@ for config in config/prep/comparison/*.yaml; do python scripts/prepare_asr_train
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --validate-only
 
 # First run the six-job (one CTC + one Whisper per language) smoke queue.
-python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison_smoke.yaml --smoke
+python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --smoke
 
-# Then launch the 45 independent production jobs.
+# Then launch the n independent production jobs.
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml
 ```
 
