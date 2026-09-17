@@ -27,7 +27,10 @@ epochs: 100
 lr: 0.00005
 patience: 20
 warmup_steps: 100
-fp16: true
+bf16: true
+fp16: false
+gradient_checkpointing: false
 
 # Output
-out_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/ctc/xlsr
+out_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/xlsr
+validation_dir: "./logs/validation/comparison/japhug/brackets"

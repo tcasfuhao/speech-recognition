@@ -22,4 +22,4 @@ warmup_steps: 100
 fp16: true
 
 # Output
-out_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/ctc/mms"
+out_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/mms"

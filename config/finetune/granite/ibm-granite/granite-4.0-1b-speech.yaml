@@ -36,4 +36,4 @@ gradient_checkpointing: true
 generation_max_length: 256
 
 # Output
-out_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/granite/granite-4.0-1b-speech
+out_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/granite-4.0-1b-speech

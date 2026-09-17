@@ -33,4 +33,4 @@ task: transcribe
 generation_max_length: 256
 
 # Output
-out_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/whisper/ipa-whisper-base
+out_dir: ~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/ipa-whipstr-large-48khz-cv-21
