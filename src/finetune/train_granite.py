@@ -17,7 +17,7 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, Trainer, Trai
 from src.data import schema
 from src.evaluation.metrics import cer, prepare_asr_text
 from src.finetune.train_seq2seq import SpeechSeq2SeqDataset
-from src.finetune.asr_config import write_experiment_summary
+from src.finetune.asr_config import write_experiment_summary, write_run_note
 from src.utils import io
 from src.utils.text_policy import write_text_policy
 
@@ -91,7 +91,9 @@ def _predict(model, processor, dataset, prompt: str, max_tokens: int, remove_spa
 def main() -> None:
     parser = argparse.ArgumentParser(description="LoRA fine-tune Granite Speech ASR")
     parser.add_argument("--config", required=True)
-    args = _load_config(parser.parse_args().config)
+    config_path = Path(parser.parse_args().config).expanduser().resolve()
+    args = _load_config(str(config_path))
+    args["config"] = str(config_path)
 
     for key in ("audio_root", "train_csv", "dev_csv", "test_csv", "out_dir"):
         args[key] = io.expand_path(args[key])
@@ -109,10 +111,12 @@ def main() -> None:
         for name in ("dev", "test"):
             frames[name] = frames[name].head(int(args["max_eval_samples"]))
 
-    run_name = f"{args.get('run_prefix', 'granite')}_{datetime.now():%Y%m%d_%H%M%S}"
+    model_name = str(args["model_id"]).split("/")[-1]
+    run_name = f"{model_name}_{datetime.now():%Y%m%d_%H%M%S}"
     out_dir = Path(args["out_dir"]) / run_name
     out_dir.mkdir(parents=True, exist_ok=False)
     (out_dir / "run_config.json").write_text(json.dumps(args, indent=2), encoding="utf-8")
+    write_run_note(out_dir, args, "granite")
 
     seed = int(args.get("train_seed", 42))
     random.seed(seed)

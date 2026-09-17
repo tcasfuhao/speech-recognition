@@ -32,7 +32,7 @@ import src.data.split as split
 import src.utils.io as io
 
 from src.evaluation.metrics import cer, prepare_asr_text
-from src.finetune.asr_config import write_experiment_summary
+from src.finetune.asr_config import write_experiment_summary, write_run_note
 from src.utils.text_policy import write_text_policy
 
 
@@ -275,6 +275,7 @@ def main():
         json.dumps(vars(args), indent=2),
         encoding="utf-8",
     )
+    write_run_note(out_dir, vars(args), "whisper")
 
     if args.train_csv and args.dev_csv and args.test_csv:
         train_df = load_split_csv(args.train_csv)
