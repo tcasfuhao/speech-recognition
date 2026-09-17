@@ -4,24 +4,24 @@ stop_on_failure: false
 # Ordered language -> edition -> model. Every job starts independently and
 # points to the edition-specific recording-level manifests.
 jobs:
-  - name: japhug-unnormalised-mms_ctc
-    config: ../comparison/japhug_unnormalised_mms_ctc.yaml
-  - name: japhug-unnormalised-xlsr_ctc
-    config: ../comparison/japhug_unnormalised_xlsr_ctc.yaml
-  - name: japhug-unnormalised-ipa_whisper_base
-    config: ../comparison/japhug_unnormalised_ipa_whisper_base.yaml
-  - name: japhug-tones-mms_ctc
-    config: ../comparison/japhug_tones_mms_ctc.yaml
-  - name: japhug-tones-xlsr_ctc
-    config: ../comparison/japhug_tones_xlsr_ctc.yaml
-  - name: japhug-tones-ipa_whisper_base
-    config: ../comparison/japhug_tones_ipa_whisper_base.yaml
-  - name: japhug-map-chars-mms_ctc
-    config: ../comparison/japhug_map-chars_mms_ctc.yaml
-  - name: japhug-map-chars-xlsr_ctc
-    config: ../comparison/japhug_map-chars_xlsr_ctc.yaml
-  - name: japhug-map-chars-ipa_whisper_base
-    config: ../comparison/japhug_map-chars_ipa_whisper_base.yaml
+  # - name: japhug-unnormalised-mms_ctc
+  #   config: ../comparison/japhug_unnormalised_mms_ctc.yaml
+  # - name: japhug-unnormalised-xlsr_ctc
+  #   config: ../comparison/japhug_unnormalised_xlsr_ctc.yaml
+  # - name: japhug-unnormalised-ipa_whisper_base
+  #   config: ../comparison/japhug_unnormalised_ipa_whisper_base.yaml
+  # - name: japhug-tones-mms_ctc
+  #   config: ../comparison/japhug_tones_mms_ctc.yaml
+  # - name: japhug-tones-xlsr_ctc
+  #   config: ../comparison/japhug_tones_xlsr_ctc.yaml
+  # - name: japhug-tones-ipa_whisper_base
+  #   config: ../comparison/japhug_tones_ipa_whisper_base.yaml
+  # - name: japhug-map-chars-mms_ctc
+  #   config: ../comparison/japhug_map-chars_mms_ctc.yaml
+  # - name: japhug-map-chars-xlsr_ctc
+  #   config: ../comparison/japhug_map-chars_xlsr_ctc.yaml
+  # - name: japhug-map-chars-ipa_whisper_base
+  #   config: ../comparison/japhug_map-chars_ipa_whisper_base.yaml
   - name: japhug-brackets-mms_ctc
     config: ../comparison/japhug_brackets_mms_ctc.yaml
   - name: japhug-brackets-xlsr_ctc
