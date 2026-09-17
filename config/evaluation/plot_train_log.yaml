@@ -1,4 +1,4 @@
-log_path: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/finetune/<run>/train_log.tsv"
-out_dir: "./logs/evaluation/<run>/plots"
+log_path: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/ipa-whisper-base/ipa-whisper-base_20260526_152906/train_log.tsv"
+out_dir: "./logs/evaluation/ipa-whisper-base_20260526_152906/plots"
 x_col: "step"
 show: false
