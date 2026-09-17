@@ -22,6 +22,14 @@ KNOWN_MODELS = {
     "neurlang/ipa-whisper-base": "whisper",
     "openai/whisper-large-v3": "whisper",
 }
+MODEL_OUTPUT_FOLDERS = {
+    "facebook/mms-1b-all": "mms",
+    "facebook/wav2vec2-xlsr-53-espeak-cv-ft": "xlsr",
+    "facebook/wav2vec2-xls-r-1b": "xlsr",
+    "ibm-granite/granite-4.0-1b-speech": "granite-4.0-1b-speech",
+    "neurlang/ipa-whisper-base": "ipa-whisper-base",
+    "openai/whisper-large-v3": "whisper-large-v3",
+}
 EXPECTED_MODEL_TYPES = {"ctc": {"wav2vec2"}, "whisper": {"whisper"}, "granite": {"granite_speech"}}
 REJECTED_MODEL_HINTS = {
     "byt5": "text-only",
@@ -96,8 +104,14 @@ def validate_config(config: dict[str, Any], *, check_audio: bool = True) -> dict
                 errors.append(f"could not inspect model architecture for {model_id!r}: {exc}")
 
     out_dir = _expanded(config, "out_dir")
-    if not out_dir or f"/processed/asr/{backend}/" not in out_dir.rstrip("/") + "/":
-        errors.append(f"out_dir must be beneath <data-root>/processed/asr/{backend}/")
+    output_folder = MODEL_OUTPUT_FOLDERS.get(model_id)
+    if output_folder is not None:
+        expected_output = f"/processed/asr/{output_folder}/"
+        if not out_dir or expected_output not in out_dir.rstrip("/") + "/":
+            errors.append(
+                f"out_dir for {model_id!r} must be beneath "
+                f"<data-root>/processed/asr/{output_folder}/"
+            )
 
     split_frames: dict[str, pd.DataFrame] = {}
     for split_name in ("train", "dev", "test"):
@@ -218,4 +232,49 @@ def write_experiment_summary(backend: str, run_name: str, payload: dict[str, Any
     target = Path("logs/experiments") / backend / f"{run_name}.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return target
+
+
+def write_run_note(
+    out_dir: str | Path,
+    config: dict[str, Any],
+    backend: str,
+) -> Path:
+    """Write a short, human-readable description beside every training run."""
+    target = Path(out_dir) / "NOTE.md"
+    config_path = config.get("config") or config.get("_config_path")
+    config_name = Path(str(config_path)).stem if config_path else "direct CLI arguments"
+    description = config.get("run_description") or (
+        f"Fine-tuning run defined by `{config_name}`."
+    )
+
+    def display(key: str, default: str = "not configured") -> str:
+        value = config.get(key)
+        return default if value is None or value == "" else str(value)
+
+    lines = [
+        "# Model run",
+        "",
+        str(description),
+        "",
+        "## Configuration",
+        "",
+        f"- Base model: `{display('model_id')}`",
+        f"- Backend: `{backend}`",
+        f"- Configuration: `{config_name}`",
+        f"- Training seed: `{display('train_seed')}`",
+        f"- Epochs / early-stopping patience: `{display('epochs')}` / `{display('patience')}`",
+        f"- Remove spaces: `{str(bool(config.get('remove_spaces', True))).lower()}`",
+        f"- Training manifest: `{display('train_csv')}`",
+        f"- Development manifest: `{display('dev_csv')}`",
+        f"- Test manifest: `{display('test_csv')}`",
+        "",
+        "## Contents",
+        "",
+        "- `best/` is the final inference-ready model and processor.",
+        "- `checkpoints/` contains Trainer checkpoints and may be removed after a verified Hub upload.",
+        "- `run_config.json`, `best_checkpoint.json`, `test_metrics.json`, and `train_log.tsv` document the run.",
+        "",
+    ]
+    target.write_text("\n".join(lines), encoding="utf-8")
     return target
