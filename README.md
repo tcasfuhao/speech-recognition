@@ -7,13 +7,15 @@ GPU-ready preparation, training, language-model, inference, and evaluation tools
 The default `data_root` is:
 
 ```text
-~.../language-downloads/yonghe-qiang_01/
-├── <source recordings and annotations>
-├── normalised/<timestamp>/       # produced by ../data-normalisation
+~.../language-downloads/<language>/
+├── normalised/<timestamp>/         # produced by ../data-normalisation
 └── processed/
-    ├── splits/wav/               # extracted clips
-    ├── asr/                      # trained models and inference output
-    └── lm/                       # LM corpus, ARPA, and KenLM binary
+    ├── splits/wav/                 # extracted clips
+    ├── asr/                        # trained models grouped by model family
+    │   ├── mms/<model_timestamp>/
+    │   ├── xlsr/<model_timestamp>/
+    │   └── ipa-whisper-base/<model_timestamp>/
+    └── lm/                         # LM corpus, ARPA, and KenLM binary
 ```
 
 The lightweight records of exactly what was used remain here:
@@ -29,7 +31,7 @@ speech-recognition/
 │   └── evaluation/
 ├── scripts/
 ├── src/
-└── legacy/                       # retired, non-imported code
+└── legacy/                       # retired code
 ```
 
 All paths are explicit in YAML configuration. Update the shared root in the configs if the dataset moves.
@@ -116,7 +118,7 @@ The comparison configuration covers Japhug, Yonghe-Qiang, and Yongning-Na for th
 All models that consume a language-edition manifest use the same capped, deterministic rows. Duration limits belong only in preparation configuration; no model-specific cap is added to CTC, Whisper, or Granite fine-tuning YAMLs.
 
 ```bash
-# Prepare all 15 language-edition manifest sets.
+# Prepare all n language-edition manifest sets.
 for config in config/prep/comparison/*.yaml; do python scripts/prepare_asr_training.py --config "$config"; done
 
 # This checks manifest separation, audio paths, and model configs.
@@ -130,6 +132,8 @@ python -m src.finetune.train_queue --config config/finetune/queues/queue_compari
 ```
 
 The production queue continues after a failed job and records every terminal status, validation report, and completed output path in its queue state.
+
+All training backends write timestamped runs beneath a short model-family directory such as `<data_root>/processed/asr/mms/`, `asr/xlsr/`, or `asr/ipa-whisper-base/`. Backend, `comparison`, and normalization-edition wrapper directories are not used. Every new run includes a `NOTE.md` describing its base model, backend, source configuration, manifests, text policy, and training schedule; use that note to distinguish normalization editions within each model-family directory.
 
 ## 4. Build KenLM outside the repository
 
