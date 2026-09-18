@@ -5,7 +5,7 @@ remove_spaces: null
 
 # Data
 metadata_delimiter: ","
-metadata: "./logs/prep/yonghe_qiang/splits/test.csv"
+metadata: "./logs/prep/yonghe_qiang_01_20260731_175902/splits/test.csv"
 utt_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
 
 # Output

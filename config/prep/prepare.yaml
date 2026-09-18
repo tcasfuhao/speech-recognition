@@ -6,7 +6,7 @@ audio_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_0
 
 # Heavy clips stay with the dataset; auditable manifests stay in this project.
 clips_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
-logs_dir: "./logs/prep/yonghe_qiang"
+logs_dir: "./logs/prep/yonghe_qiang_01"
 
 # Tier selection
 include_tier_regex: null # What tiers from the files do you want to specifically include, and only those will be included.
