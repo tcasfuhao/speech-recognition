@@ -185,8 +185,8 @@ Inference output remains with the external model data. Evaluation summaries and 
 
 ## CER-filtered manifests
 
-The optional filtering helper keeps its derived metadata and split files with the selected timestamped Yonghe-Qiang preparation run:
+The optional filtering helper reads imported scored transcriptions from a configuration file and creates a new `logs/prep/<language>_<timestamp>/` run containing the filtered metadata, removed rows, split files, summary, and a note explaining that the noisiest 10% was removed:
 
 ```bash
-python src/data/minus_10_percent.py
+python src/data/minus_10_percent.py --config config/minus_10_percent/cer90.yaml
 ```
