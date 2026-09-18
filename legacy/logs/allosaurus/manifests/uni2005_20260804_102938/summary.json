@@ -1,0 +1,10 @@
+{
+  "rows": {
+    "train": 8172,
+    "validate": 1021,
+    "test": 1022
+  },
+  "unique_utterance_ids": 10215,
+  "target_phones": 53,
+  "unsupported_tokens": 68991
+}

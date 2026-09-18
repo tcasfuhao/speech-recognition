@@ -90,7 +90,7 @@ def prepare_manifests(config: dict, run_name: str) -> tuple[Path, Path, dict[str
     root = Path(config["allosaurus_root"]).expanduser().resolve()
     model_path = root / "allosaurus" / "pretrained" / "uni2005"
     phone_ids = read_phone_ids(model_path / "phone.txt")
-    local_root = Path(config.get("manifest_dir", "logs/allosaurus/manifests")) / run_name
+    local_root = Path(config.get("manifest_dir", "legacy/logs/allosaurus/manifests")) / run_name
     work_root = Path(config["work_dir"]).expanduser() / run_name
     unsupported_rows: list[dict] = []
     records: dict[str, list[dict]] = {}
@@ -184,7 +184,7 @@ def run_feature_preparation(config: dict, work_root: Path) -> None:
     root = Path(config["allosaurus_root"]).expanduser().resolve()
     env = os.environ.copy()
     env["PYTHONPATH"] = str(root) + os.pathsep + env.get("PYTHONPATH", "")
-    inventory = Path(config.get("manifest_dir", "logs/allosaurus/manifests")) / work_root.name / "target_phone_inventory.txt"
+    inventory = Path(config.get("manifest_dir", "legacy/logs/allosaurus/manifests")) / work_root.name / "target_phone_inventory.txt"
     for split_name in ("train", "validate"):
         split_path = work_root / split_name
         subprocess.run([sys.executable, "-m", "allosaurus.bin.prep_feat", "--model", "uni2005", "--path", str(split_path)], cwd=root, env=env, check=True)

@@ -1,0 +1,12 @@
+{
+  "valid": true,
+  "backend": "allosaurus",
+  "model": "uni2005",
+  "architecture": null,
+  "split_rows": {
+    "train": 8172,
+    "dev": 1021,
+    "test": 1022
+  },
+  "errors": []
+}
