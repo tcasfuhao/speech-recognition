@@ -2,8 +2,8 @@ from __future__ import annotations
 
 # Standard libraries
 import argparse
+import json
 import sys
-
 from pathlib import Path
 
 # Ensure project root is on PYTHONPATH for direct script execution
@@ -30,6 +30,7 @@ from src.prep.eaf_ingest import (
     IngestConfig,
     ingest_eaf_directory,
 )
+from src.prep.run_paths import new_prep_run_id, timestamped_prep_dir
 
 
 def _project_root() -> Path:
@@ -48,6 +49,15 @@ def main() -> None:
     ap.add_argument("--audio_root", type=str, default=None)
     ap.add_argument("--clips_dir", type=str, default=None)
     ap.add_argument("--logs_dir", type=str, default="logs/prep")
+    ap.add_argument(
+        "--prep_run_id",
+        type=str,
+        default=None,
+        help=(
+            "Timestamp shared by one preparation run or comparison batch. "
+            "Required when resuming at stage 2."
+        ),
+    )
 
     ap.add_argument("--include_tier_regex", type=str, default=None)
     ap.add_argument("--exclude_tier_regex", type=str, default=None)
@@ -99,10 +109,46 @@ def main() -> None:
         if args.clips_dir
         else data_root / "processed" / "splits"
     )
-    logs_dir = Path(args.logs_dir).expanduser()
-    if not logs_dir.is_absolute():
-        logs_dir = root / logs_dir
-    logs_dir.mkdir(parents=True, exist_ok=True)
+    configured_logs_dir = Path(args.logs_dir).expanduser()
+    if not configured_logs_dir.is_absolute():
+        configured_logs_dir = root / configured_logs_dir
+    if args.start_stage > 1 and not args.prep_run_id:
+        raise ValueError(
+            "--prep_run_id is required when --start_stage is greater than 1; "
+            "reuse the preparation timestamp printed by stage 1"
+        )
+    prep_run_id = args.prep_run_id or new_prep_run_id()
+    logs_dir = timestamped_prep_dir(configured_logs_dir, prep_run_id)
+    if args.start_stage <= 1:
+        try:
+            logs_dir.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as error:
+            raise FileExistsError(
+                f"Preparation output already exists and will not be overwritten: {logs_dir}"
+            ) from error
+    elif not logs_dir.is_dir():
+        raise FileNotFoundError(
+            f"Cannot resume preparation; timestamped output does not exist: {logs_dir}"
+        )
+    if args.start_stage <= 1:
+        run_record = {
+            "prep_run_id": prep_run_id,
+            "config": str(Path(args.config).resolve()) if args.config else None,
+            "configured_logs_dir": str(configured_logs_dir),
+            "resolved_logs_dir": str(logs_dir),
+            "data_root": str(data_root),
+            "annotations_dir": str(annotations_dir),
+            "audio_root": str(audio_root),
+            "clips_dir": str(clips_dir),
+            "start_stage": args.start_stage,
+            "stop_stage": args.stop_stage,
+        }
+        (logs_dir / "prep_run.json").write_text(
+            json.dumps(run_record, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    print(f"Preparation run ID: {prep_run_id}")
+    print(f"Preparation logs directory: {logs_dir}")
 
     audio_exts = args.audio_exts
     if audio_exts:
