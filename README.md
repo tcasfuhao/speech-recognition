@@ -61,16 +61,20 @@ The choice is saved with each trained model. Inference reads it automatically; `
 ## 2. Extract clips and make splits
 
 ```bash
-python scripts/prepare_asr_training.py --config config/prep/prepare_yq.yaml
+python scripts/prepare_asr_training.py --config config/prep/prepare.yaml
 ```
 
 Stage 1 writes clips to `<data_root>/processed/splits/wav/` and writes local `metadata.csv` and `skip_metadata.csv` logs. Stage 2 first creates the local 80/10/10 train, development, and test splits, then deterministically shuffles and caps each split at its configured duration target while retaining the final clip that crosses the target. A null target keeps the complete split. The manifests and their configured and retained durations are recorded in `split_summary.json`.
 
+Preparation outputs are immutable timestamped runs. An individual preparation configured with `logs_dir: logs/prep/yonghe_qiang_01` writes to `logs/prep/yonghe_qiang_01_<timestamp>/`; an existing directory is never reused. The command prints both its preparation run ID and resolved directory. Pin training, inference, and anguage-model YAMLs to that exact directory before using the new manifests.
+
 Stages can be selected independently:
 
 ```bash
-python scripts/prepare_asr_training.py --config config/prep/prepare_yq.yaml --start_stage 2 --stop_stage 2
+python scripts/prepare_asr_training.py --config config/prep/prepare.yaml --prep_run_id <timestamp-from-stage-1> --start_stage 2 --stop_stage 2
 ```
+
+Resuming after stage 1 requires its printed `--prep_run_id`; this prevents stage 2 from silently reading a different run.
 
 ## 3. Validate and train an ASR backend
 
@@ -89,7 +93,7 @@ The supported configurations are MMS and XLS-R (CTC), IPA-Whisper Base and Whisp
 
 `facebook/wav2vec2-xls-r-1b` illustrates how to assess a future CTC checkpoint: it is a candidate because it uses the Wav2Vec2/XLS-R architecture expected by the CTC trainer. Inspect the Hugging Face configuration to confirm `model_type: wav2vec2`, then verify that its feature extractor and `AutoModelForCTC` load successfully with the project-generated vocabulary. A base XLS-R checkpoint need not include a project-specific CTC head because fine-tuning replaces or initializes that head for the vocabulary. Once the load check succeeds, add the model ID to the dispatcher's explicit supported-model list and run `--validate-only`; the current validator rejects unregistered model IDs before it performs its architecture check.
 
-Training reads local split manifests and external clips. All checkpoints and models are written beneath `<data_root>/processed/asr/<backend>/`; validation, smoke configuration, manifests, predictions, failures, and summaries stay in `logs/`.
+Training reads local split manifests and external clips. All checkpoints and models are written beneath `<data_root>/processed/asr/<model-family>/`; validation, smoke configuration, manifests, predictions, failures, and summaries stay in `logs/`.
 
 ### Run several training configurations sequentially
 
@@ -118,8 +122,12 @@ The comparison configuration covers Japhug, Yonghe-Qiang, and Yongning-Na for th
 All models that consume a language-edition manifest use the same capped, deterministic rows. Duration limits belong only in preparation configuration; no model-specific cap is added to CTC, Whisper, or Granite fine-tuning YAMLs.
 
 ```bash
-# Prepare all n language-edition manifest sets.
-for config in config/prep/comparison/*.yaml; do python scripts/prepare_asr_training.py --config "$config"; done
+# Prepare all language-edition manifests beneath one comparison batch timestamp.
+comparison_prep_id=$(date +%Y%m%d_%H%M%S)
+for config in config/prep/comparison/*.yaml; do python scripts/prepare_asr_training.py --config "$config" --prep_run_id "$comparison_prep_id"; done
+
+# Pin config/finetune/comparison/*.yaml to the emitted
+# logs/prep/comparison/<timestamp>/... paths before validation or training.
 
 # This checks manifest separation, audio paths, and model configs.
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --validate-only
@@ -132,6 +140,8 @@ python -m src.finetune.train_queue --config config/finetune/queues/queue_compari
 ```
 
 The production queue continues after a failed job and records every terminal status, validation report, and completed output path in its queue state.
+
+Comparison preparation inserts the shared run ID immediately below `logs/prep/comparison/`, giving `logs/prep/comparison/<timestamp>/<language>/<edition>/`. Reusing a timestamp for the same language-edition is rejected rather than overwritten.
 
 All training backends write timestamped runs beneath a short model-family directory such as `<data_root>/processed/asr/mms/`, `asr/xlsr/`, or `asr/ipa-whisper-base/`. Backend, `comparison`, and normalization-edition wrapper directories are not used. Every new run includes a `NOTE.md` describing its base model, backend, source configuration, manifests, text policy, and training schedule; use that note to distinguish normalization editions within each model-family directory.
 
@@ -175,7 +185,7 @@ Inference output remains with the external model data. Evaluation summaries and 
 
 ## CER-filtered manifests
 
-The optional filtering helper now keeps all resulting metadata and split files under `logs/prep/yonghe_qiang/cer90/`:
+The optional filtering helper keeps its derived metadata and split files with the selected timestamped Yonghe-Qiang preparation run:
 
 ```bash
 python src/data/minus_10_percent.py
