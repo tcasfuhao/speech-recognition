@@ -1,0 +1,12 @@
+# Imported scored transcriptions. `preds_scored.csv` must be present here.
+language: yonghe_qiang
+transcription_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/mms/mms-1b-all_20260529_161500/split_seed_42/best_20260531_123638"
+scored_filename: "preds_scored.csv"
+
+# Leave null to create logs/prep/<language>_<timestamp>/ automatically.
+output_dir: null
+remove_fraction: 0.10
+split_seed: 42
+train_ratio: 0.8
+dev_ratio: 0.1
+test_ratio: 0.1
