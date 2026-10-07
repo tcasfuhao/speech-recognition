@@ -1,17 +1,18 @@
 # Model
-model_id_or_path: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/<model-family>/<run>/best"
+model_id_or_path: ~/projects/my-projects/asr-models/language-downloads/yongning-na_01/doreco_yong1270_core_v2.0/processed/asr/xlsr/wav2vec2-xls-r-1b_20260930_122211/best
 # null reads the policy saved with the model; true/false explicitly overrides it.
 remove_spaces: null
 
 # Data
 metadata_delimiter: ","
-metadata: "./logs/prep/yonghe_qiang_01_20260731_175902/splits/test.csv"
-utt_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
+metadata: ./logs/prep/comparison/20260928_132210/yongning_na/full/metadata.csv
+utt_root: ~/projects/my-projects/asr-models/language-downloads/yongning-na_01/doreco_yong1270_core_v2.0/processed/splits/comparison/yongning_na/full
 
 # Output
-out_dir: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/inference"
+out_dir: ~/projects/my-projects/asr-models/language-downloads/yongning-na_01/doreco_yong1270_core_v2.0/inference
 
 # LM (optional)
-lm_path: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/lm/<run>/lm-yq.binary"
-lm_weight: 0.5
-beam_width: 50
+lm_path: null
+# lm_path: "~/projects/my-projects/asr-models/language-downloads/yongning-na_01/processed/lm/<run>/lm-yq.binary"
+# lm_weight: 0.5
+# beam_width: 50

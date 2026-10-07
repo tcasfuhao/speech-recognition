@@ -1,13 +1,13 @@
 # Predictions from transcribe.py
-preds: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/asr/inference/<run>/preds-<model>.csv"
+preds: ~/projects/my-projects/asr-models/language-downloads/yongning-na_01/doreco_yong1270_core_v2.0/inference/best_20261005_172718/preds-best.csv
 
 # Output directory
-out_dir: "./logs/evaluation/<run>"
+out_dir: "./logs/evaluation/wav2vec2-xls-r-1b_20260930_122211"
 
 # CER options
 strip_punct: false
 empty_ref_policy: "skip"
-show: true
+show: false
 
 # Optional grouping (examples)
 # group_by:
