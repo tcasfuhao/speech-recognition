@@ -66,7 +66,7 @@ python scripts/prepare_asr_training.py --config config/prep/prepare.yaml
 
 Stage 1 writes clips to `<data_root>/processed/splits/wav/` and writes local `metadata.csv` and `skip_metadata.csv` logs. Stage 2 first creates the local 80/10/10 train, development, and test splits, then deterministically shuffles and caps each split at its configured duration target while retaining the final clip that crosses the target. A null target keeps the complete split. The manifests and their configured and retained durations are recorded in `split_summary.json`.
 
-Preparation outputs are immutable timestamped runs. An individual preparation configured with `logs_dir: logs/prep/yonghe_qiang_01` writes to `logs/prep/yonghe_qiang_01_<timestamp>/`; an existing directory is never reused. The command prints both its preparation run ID and resolved directory. Pin training, inference, and anguage-model YAMLs to that exact directory before using the new manifests.
+Preparation outputs are immutable timestamped runs. An individual preparation configured with `logs_dir: logs/prep/yonghe_qiang_01` writes to `logs/prep/yonghe_qiang_01_<timestamp>/`; an existing directory is never reused. The command prints both its preparation run ID and resolved directory. Set `prep_dir` in a fine-tuning YAML to that exact directory; training then reads `metadata.csv` and `splits/{train,dev,test}.csv` from it. Any `metadata`, `train_csv`, `dev_csv`, or `test_csv` value explicitly set in the YAML overrides its derived path. For CER-filtered training, point `prep_dir` to the `cer90/` subdirectory. Inference and language-model configs still specify their own input files.
 
 Stages can be selected independently:
 
@@ -176,9 +176,9 @@ otherwise CTC uses greedy decoding. Silero VAD is not part of this workflow.
 Replace `<run>` placeholders in the relevant YAML with the selected model or inference run, then execute:
 
 ```bash
-python -m src.inference.transcribe --config config/inference/inference_yq.yaml
-python -m src.evaluation.evaluate_preds --config config/evaluation/evaluation_yq.yaml
-python -m src.evaluation.plot_train_log --config config/evaluation/plot_train_log_yq.yaml
+python -m src.inference.transcribe --config config/inference/inference.yaml
+python -m src.evaluation.evaluate_preds --config config/evaluation/evaluation.yaml
+python -m src.evaluation.plot_train_log --config config/evaluation/plot_train_log.yaml
 ```
 
 Inference output remains with the external model data. Evaluation summaries and plots are written under this repository's `logs/evaluation/` directory.
