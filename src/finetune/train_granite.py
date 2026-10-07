@@ -17,7 +17,7 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, Trainer, Trai
 from src.data import schema
 from src.evaluation.metrics import cer, prepare_asr_text
 from src.finetune.train_seq2seq import SpeechSeq2SeqDataset
-from src.finetune.asr_config import write_experiment_summary, write_run_note
+from src.finetune.asr_config import resolve_prep_paths, write_experiment_summary, write_run_note
 from src.utils import io
 from src.utils.text_policy import write_text_policy
 
@@ -58,7 +58,7 @@ class GraniteSpeechCollator:
 
 
 def _load_config(path: str) -> dict:
-    return yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    return resolve_prep_paths(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
 
 
 def _predict(model, processor, dataset, prompt: str, max_tokens: int, remove_spaces: bool) -> tuple[list[dict], dict]:

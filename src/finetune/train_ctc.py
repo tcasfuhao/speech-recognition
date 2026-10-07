@@ -35,7 +35,7 @@ import src.data.schema as schema
 import src.data.split as split
 
 from src.evaluation.metrics import cer, prepare_asr_text
-from src.finetune.asr_config import write_experiment_summary, write_run_note
+from src.finetune.asr_config import resolve_prep_paths, write_experiment_summary, write_run_note
 from src.utils.text_policy import write_text_policy
 
 
@@ -229,6 +229,7 @@ def main():
     ap.add_argument("--config", type=str, help="Path to YAML config file")
 
     ap.add_argument("--metadata", help="Path to metadata.csv")
+    ap.add_argument("--prep_dir", help="Preparation run directory containing metadata.csv and splits/")
     ap.add_argument("--audio_root", default=None)
 
     ap.add_argument("--train_csv", type=str, default=None)
@@ -270,6 +271,8 @@ def main():
 
         print(f"Loaded config from {args.config}:")
         print(yaml.dump(config, sort_keys=False))
+
+    resolve_prep_paths(vars(args))
 
     required = ["model_id", "out_dir"]
     for r in required:

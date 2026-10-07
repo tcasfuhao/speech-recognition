@@ -45,7 +45,24 @@ def load_config(path: str | Path) -> dict[str, Any]:
     config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     if not isinstance(config, dict):
         raise ValueError("Training config must be a YAML mapping")
+    resolve_prep_paths(config)
     config["_config_path"] = str(config_path)
+    return config
+
+
+def resolve_prep_paths(config: dict[str, Any]) -> dict[str, Any]:
+    """Fill standard manifests from a preparation run, preserving explicit paths."""
+    prep_dir = config.get("prep_dir")
+    if prep_dir:
+        root = Path(expand_path(str(prep_dir)))
+        defaults = {"metadata": root / "metadata.csv"}
+        defaults.update(
+            {f"{name}_csv": root / "splits" / f"{name}.csv"
+             for name in ("train", "dev", "test")}
+        )
+        for key, path in defaults.items():
+            if not config.get(key):
+                config[key] = str(path)
     return config
 
 
