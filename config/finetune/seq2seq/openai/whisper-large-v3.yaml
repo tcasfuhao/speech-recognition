@@ -1,9 +1,15 @@
-# Data (CER-filtered: top 10% highest CER removed)
-metadata: "./logs/prep/yonghe_qiang_01_20260731_175902/cer90/metadata.csv"
+# Data: prep_dir supplies metadata.csv and splits/{train,dev,test}.csv.
+prep_dir: "./logs/prep/yonghe_qiang_01_20260731_175902"
 audio_root: "~/projects/my-projects/asr-models/language-downloads/yonghe-qiang_01/processed/splits"
-train_csv: "./logs/prep/yonghe_qiang_01_20260731_175902/cer90/splits/train.csv"
-dev_csv: "./logs/prep/yonghe_qiang_01_20260731_175902/cer90/splits/dev.csv"
-test_csv: "./logs/prep/yonghe_qiang_01_20260731_175902/cer90/splits/test.csv"
+
+# Set metadata, train_csv, dev_csv, or test_csv to override an individual file.
+# metadata: "./logs/prep/yonghe_qiang_01_20260731_175902/metadata.csv"
+# train_csv: "./logs/prep/yonghe_qiang_01_20260731_175902/splits/train.csv"
+# dev_csv: "./logs/prep/yonghe_qiang_01_20260731_175902/splits/dev.csv"
+# test_csv: "./logs/prep/yonghe_qiang_01_20260731_175902/splits/test.csv"
+
+# Data (CER-filtered: top 10% highest CER removed)
+prep_dir: "./logs/prep/yonghe_qiang_01_20260731_175902/cer90"
 
 # Model
 backend: "whisper"
