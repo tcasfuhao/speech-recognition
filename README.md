@@ -111,6 +111,8 @@ Queue YAML paths are resolved relative to the queue file. Job names and training
 
 Each run writes `queue_state.json` and one terminal log per job beneath `logs/queues/<queue-name>/<timestamp>/`. Comparison validation reports use the same batch ID beneath `logs/validation/comparison/<timestamp>/<language>/<edition>/`; preflight, job-start, and resumed validations receive unique timestamped filenames and are never overwritten. Standalone validation creates its own timestamped batch. The state records the validation batch and model output directory produced by each trainer. Resume an interrupted or failed run explicitly; successful jobs are skipped and incomplete jobs restart from their original training configuration:
 
+In an interactive terminal, queued jobs show the trainer's live overall training bar, a separate development evaluation bar, and metric lines. After evaluation, training continues at its existing overall step count on a new line. Standalone trainers show the same bars. When queue output is redirected, it prints occasional readable progress snapshots. Each job's `.log` keeps completed bars and metric lines as plain text; redraws update the current bar instead of adding a line for every step. After a failure or interruption, the final line of that job's log shows the last training or evaluation position reached. The `train_log.tsv` metrics and evaluation and checkpoint schedules are unchanged.
+
 ```bash
 python -m src.finetune.train_queue --resume logs/queues/normalisation_model_comparison/<timestamp>
 ```
