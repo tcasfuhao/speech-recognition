@@ -1,10 +1,10 @@
-# ASR Finetuning
+# ASR Model Training and Comparison
 
-GPU-ready preparation, training, language-model, inference, and evaluation tools for any language dataset. The repository contains code, configuration, and auditable CSV/JSON logs. Heavy data and model artifacts live with the configured external dataset.
+GPU-ready tools for preparing speech data, training multiple supported ASR models, and comparing their predictions across datasets and transcription choices. YAML configurations define each model and dataset; queues run independent training or inference jobs and save auditable CSV/JSON results. The included language comparisons are worked examples of this reusable workflow. Heavy data and model artifacts live with the configured external dataset.
 
 ## Storage layout
 
-The default `data_root` is:
+The included configurations use an external `data_root` with a layout like this:
 
 ```text
 ~.../language-downloads/<language>/
@@ -24,7 +24,7 @@ The lightweight records of exactly what was used remain here:
 speech-recognition/
 ├── config/
 ├── logs/
-│   ├── prep/yonghe_qiang/
+│   ├── prep/<dataset_run>/
 │   │   ├── metadata.csv
 │   │   ├── skip_metadata.csv
 │   │   └── splits/{train,dev,test}.csv
@@ -38,11 +38,11 @@ All paths are explicit in YAML configuration. Update the shared root in the conf
 
 ## Requirements
 
-This project must be run in the shared `tcas_asr_python3.10` Conda environment. Create it once with Python 3.10, activate it, and install the requirements from any shared project:
+Use Python 3.10 and install the dependencies in `requirements.txt`. For example, with Conda:
 
 ```bash
-conda create -n tcas_asr_python3.10 python=3.10
-conda activate tcas_asr_python3.10
+conda create -n asr-models python=3.10
+conda activate asr-models
 python -m pip install -r requirements.txt
 ```
 
@@ -66,7 +66,7 @@ python scripts/prepare_asr_training.py --config config/prep/prepare.yaml
 
 Stage 1 writes clips to `<data_root>/processed/splits/wav/` and writes local `metadata.csv` and `skip_metadata.csv` logs. Stage 2 first creates the local 80/10/10 train, development, and test splits, then deterministically shuffles and caps each split at its configured duration target while retaining the final clip that crosses the target. A null target keeps the complete split. The manifests and their configured and retained durations are recorded in `split_summary.json`.
 
-Preparation outputs are immutable timestamped runs. An individual preparation configured with `logs_dir: logs/prep/yonghe_qiang_01` writes to `logs/prep/yonghe_qiang_01_<timestamp>/`; an existing directory is never reused. The command prints both its preparation run ID and resolved directory. Set `prep_dir` in a fine-tuning YAML to that exact directory; training then reads `metadata.csv` and `splits/{train,dev,test}.csv` from it. Any `metadata`, `train_csv`, `dev_csv`, or `test_csv` value explicitly set in the YAML overrides its derived path. For CER-filtered training, point `prep_dir` to the `cer90/` subdirectory. Inference and language-model configs still specify their own input files.
+Preparation outputs are immutable timestamped runs. For example, `logs_dir: logs/prep/<dataset>` writes to `logs/prep/<dataset>_<timestamp>/`; an existing directory is never reused. The command prints both its preparation run ID and resolved directory. Set `prep_dir` in a fine-tuning YAML to that exact directory; training then reads `metadata.csv` and `splits/{train,dev,test}.csv` from it. Any `metadata`, `train_csv`, `dev_csv`, or `test_csv` value explicitly set in the YAML overrides its derived path. For CER-filtered training, point `prep_dir` to the `cer90/` subdirectory. Inference and language-model configs still specify their own input files.
 
 Stages can be selected independently:
 
@@ -97,9 +97,9 @@ Training reads local split manifests and external clips. All checkpoints and mod
 
 ### Run several training configurations sequentially
 
-The queue runner validates every configuration before starting the first job, then launches each trainer in a separate Python process. CTC is a training objective/backend; MMS and XLS-R are two different pretrained models that use it. Every queued model starts independently from the checkpoint named in its own training YAML—weights do not carry from one job to the next.
+List the training YAMLs you want to compare in a queue file. The queue runner validates every configuration before starting the first job, then launches each trainer in a separate Python process. CTC is a training objective/backend; MMS and XLS-R are two different pretrained models that use it. Every queued model starts independently from the checkpoint named in its own training YAML—weights do not carry from one job to the next.
 
-The normalisation comparison queue runs MMS CTC, XLS-R CTC, and IPA-Whisper Base in language → edition → model order. A full run is expensive, so prepare the manifests and use its dedicated validation and smoke queues first:
+The included normalisation comparison queue is an example with MMS CTC, XLS-R CTC, and IPA-Whisper Base. Adapt its job list and training YAMLs for your datasets and supported models. A full run is expensive, so prepare the manifests and validate or smoke test the queue first:
 
 ```bash
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --validate-only
@@ -109,7 +109,7 @@ python -m src.finetune.train_queue --config config/finetune/queues/queue_compari
 
 Queue YAML paths are resolved relative to the queue file. Job names and training configs must be unique. By default, a failure stops the queue; set `stop_on_failure: false` in YAML or pass `--continue-on-error` to attempt the remaining jobs.
 
-Each run writes `queue_state.json` and one terminal log per job beneath `logs/queues/<queue-name>/<timestamp>/`. Comparison validation reports use the same batch ID beneath `logs/validation/comparison/<timestamp>/<language>/<edition>/`; preflight, job-start, and resumed validations receive unique timestamped filenames and are never overwritten. Standalone validation creates its own timestamped batch. The state records the validation batch and model output directory produced by each trainer. Resume an interrupted or failed run explicitly; successful jobs are skipped and incomplete jobs restart from their original training configuration:
+Each run writes `queue_state.json` and one terminal log per job beneath `logs/queues/<queue-name>/<timestamp>/`. For the included comparison configs, validation reports use the same batch ID beneath `logs/validation/comparison/<timestamp>/<language>/<edition>/`; preflight, job-start, and resumed validations receive unique timestamped filenames and are never overwritten. Standalone validation creates its own timestamped batch. The state records the validation batch and model output directory produced by each trainer. Resume an interrupted or failed run explicitly; successful jobs are skipped and incomplete jobs restart from their original training configuration:
 
 In an interactive terminal, queued jobs show the trainer's live overall training bar, a separate development evaluation bar, and metric lines. After evaluation, training continues at its existing overall step count on a new line. Standalone trainers show the same bars. When queue output is redirected, it prints occasional readable progress snapshots. Each job's `.log` keeps completed bars and metric lines as plain text; redraws update the current bar instead of adding a line for every step. After a failure or interruption, the final line of that job's log shows the last training or evaluation position reached. The `train_log.tsv` metrics and evaluation and checkpoint schedules are unchanged.
 
@@ -117,9 +117,9 @@ In an interactive terminal, queued jobs show the trainer's live overall training
 python -m src.finetune.train_queue --resume logs/queues/normalisation_model_comparison/<timestamp>
 ```
 
-#### 45-run normalisation comparison
+#### Worked example: 45-model normalisation comparison
 
-The comparison configuration covers Japhug, Yonghe-Qiang, and Yongning-Na for the five completed editions (`unnormalised`, `tones`, `map-chars`, `brackets`, and `full`) and three models (MMS CTC, XLS-R CTC, and IPA-Whisper Base). Preparation is intentionally per language-edition: every config extracts only the selected tier, discards texts blanked by that edition, and creates its own deterministic utterance-level 80/10/10 splits. Japhug and Yonghe-Qiang manifests are then capped at approximately 2 hours of training audio and 12 minutes each of development and test audio; Yongning-Na keeps its complete split. Different utterances from one recording may occur in different splits; individual audio clips never overlap.
+The comparison configuration defines 45 language–edition–model combinations across Japhug, Yonghe-Qiang, and Yongning-Na. The training queue selects which of those jobs to run. The five completed editions are `unnormalised`, `tones`, `map-chars`, `brackets`, and `full`; the models are MMS CTC, XLS-R CTC, and IPA-Whisper Base. Preparation is intentionally per language-edition: every config extracts only the selected tier, discards texts blanked by that edition, and creates its own deterministic utterance-level 80/10/10 splits. Japhug and Yonghe-Qiang manifests are then capped at approximately 2 hours of training audio and 12 minutes each of development and test audio; Yongning-Na keeps its complete split. Different utterances from one recording may occur in different splits; individual audio clips never overlap.
 
 All models that consume a language-edition manifest use the same capped, deterministic rows. Duration limits belong only in preparation configuration; no model-specific cap is added to CTC, Whisper, or Granite fine-tuning YAMLs.
 
@@ -134,10 +134,10 @@ for config in config/prep/comparison/*.yaml; do python scripts/prepare_asr_train
 # This checks manifest separation, audio paths, and model configs.
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --validate-only
 
-# First run the six-job (one CTC + one Whisper per language) smoke queue.
+# Smoke test the jobs currently listed in the queue.
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml --smoke
 
-# Then launch the n independent production jobs.
+# Launch those independent training jobs.
 python -m src.finetune.train_queue --config config/finetune/queues/queue_comparison.yaml
 ```
 
@@ -185,9 +185,11 @@ python -m src.evaluation.plot_train_log --config config/evaluation/plot_train_lo
 
 Inference output remains with the external model data. Evaluation summaries and plots are written under this repository's `logs/evaluation/` directory.
  
-### 45-model comparison inference
+### Batch comparison of trained models
 
-`config/inference/comparison/queue.yaml` lists the 45 saved comparison checkpoints. Each model config points to its original capped train, development, and test manifests. Forty checkpoints are pinned to private Hugging Face commits; five Yongning-Na checkpoints use local `best/` directories. Run this on a GPU machine with the project environment installed and private Hub access (`hf auth login`).
+The inference queue accepts a list of CTC or Whisper model configs. Each config supplies a local checkpoint or pinned Hugging Face model, its train, development, and test manifests, audio root, text policy, and saved test CER. Copy and adapt the supplied queue and job YAMLs to compare other supported models or datasets.
+
+The included `config/inference/comparison/queue.yaml` is a worked example with 45 saved checkpoints: 40 pinned to private Hugging Face commits and five stored locally. Run a queue on a GPU machine with the project environment installed; private Hub models require access (`hf auth login`). The commands below use this example queue:
 
 ```bash
 # Check model access, manifests, and audio without transcribing.
@@ -196,7 +198,7 @@ python -m src.inference.transcribe_queue --config config/inference/comparison/qu
 # Pilot one complete model, including all three splits, and compare its rerun test CER.
 python -m src.inference.transcribe_queue --config config/inference/comparison/queue.yaml --job japhug-unnormalised-mms-ctc
 
-# Evaluate all 45 models. An independent one-clip-per-split check can use --limit 1.
+# Evaluate every model listed in this queue. A one-clip-per-split check can use --limit 1.
 python -m src.inference.transcribe_queue --config config/inference/comparison/queue.yaml
 
 # Continue a failed or interrupted run, skipping completed splits.
