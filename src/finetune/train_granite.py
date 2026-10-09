@@ -165,6 +165,7 @@ def main() -> None:
             gradient_checkpointing=True,
             remove_unused_columns=False,
             report_to="none",
+            disable_tqdm=False,
             seed=seed,
         ),
         train_dataset=datasets["train"],

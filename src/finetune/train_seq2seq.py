@@ -405,6 +405,7 @@ def main():
         fp16=args.fp16,
         bf16=args.bf16,
         report_to="none",
+        disable_tqdm=False,
         seed=args.train_seed,
         remove_unused_columns=False,
         gradient_checkpointing=True,
