@@ -20,9 +20,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "logs" / "evaluation" / "comparison_inference"
 SPLITS = ("train", "dev", "test")
 SUMMARY_FIELDS = (
-    "name", "language", "edition", "model", "source", "baseline_test_cer",
-    "train_cer", "dev_cer", "test_cer", "heldout_cer", "all_cer",
-    "heldout_minus_train_pp", "test_minus_baseline_pp",
+    "name", "language", "edition", "model", "source", "saved_test_cer",
+    "train_cer", "dev_cer", "test_cer", "dev_test_cer", "train_dev_test_cer",
+    "dev_test_minus_train_cer", "test_minus_saved_test_cer",
     "train_scored", "dev_scored", "test_scored", "train_rows", "dev_rows", "test_rows",
 )
 
@@ -226,19 +226,19 @@ def write_summary(state: dict, run_dir: Path) -> Path:
                 continue
             job = entry["config"]
             metrics = {split: entry["splits"][split]["metrics"] for split in SPLITS}
-            heldout = _mean([metrics["dev"], metrics["test"]])
-            all_cer = _mean(list(metrics.values()))
+            dev_test_cer = _mean([metrics["dev"], metrics["test"]])
+            train_dev_test_cer = _mean([metrics[split] for split in SPLITS])
             train = metrics["train"]["cer"]
             test = metrics["test"]["cer"]
             writer.writerow({
                 "name": job["name"], "language": job["language"], "edition": job["edition"], "model": job["model"],
                 "source": (job["source"]["repo_id"] + "@" + job["source"]["revision"])
                 if job["source"]["type"] == "hub" else job["source"]["path"],
-                "baseline_test_cer": job["baseline_test_cer"],
+                "saved_test_cer": job["baseline_test_cer"],
                 "train_cer": train, "dev_cer": metrics["dev"]["cer"], "test_cer": test,
-                "heldout_cer": heldout, "all_cer": all_cer,
-                "heldout_minus_train_pp": (heldout - train) * 100 if heldout is not None and train is not None else "",
-                "test_minus_baseline_pp": (test - job["baseline_test_cer"]) * 100 if test is not None else "",
+                "dev_test_cer": dev_test_cer, "train_dev_test_cer": train_dev_test_cer,
+                "dev_test_minus_train_cer": dev_test_cer - train if dev_test_cer is not None and train is not None else "",
+                "test_minus_saved_test_cer": test - job["baseline_test_cer"] if test is not None else "",
                 "train_scored": metrics["train"]["scored"], "dev_scored": metrics["dev"]["scored"], "test_scored": metrics["test"]["scored"],
                 "train_rows": metrics["train"]["rows"], "dev_rows": metrics["dev"]["rows"], "test_rows": metrics["test"]["rows"],
             })

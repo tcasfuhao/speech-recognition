@@ -48,25 +48,25 @@ python -m pip install -r requirements.txt
 
 `ffmpeg` is required to read and split some recording formats.
 
-## 1. Normalize transcripts separately
+## 1. Normalise transcripts separately
 
-Run the sibling `data-normalisation` workflow first. It writes a timestamped copy beneath `<data_root>/normalised/` and keeps its own normalization logs. Then set `annotations_dir` in `config/prep/prepare.yaml` to that exact run. The original recordings are found separately through `audio_root`.
+Run the sibling `data-normalisation` workflow first. It writes a timestamped copy beneath `<data_root>/normalised/` and keeps its own normalisation logs. Then set `annotations_dir` in `config/prep/prepare.yaml` to that exact run. The original recordings are found separately through `audio_root`.
 
 ASR preparation keeps the normalised transcriptions and their single word-boundary spaces intact; it does not rewrite clips to mono/16 kHz. Model loaders perform required channel conversion and resampling in memory during training or inference.
 
-Training configs use `remove_spaces: true` by default. The model loader removes all Unicode whitespace from targets in memory, without changing the manifests or the normalised source data. Set it to `false` for CTC, Whisper, or Granite when a researcher deliberately wants the ASR model to learn spaces.
+Training configs use `remove_spaces: true` by default. The model loader removes all Unicode whitespace from targets in memory, without changing the manifests or the normalised source data. Set it to `false` when you want the ASR model to learn spaces.
 
-The choice is saved with each trained model. Inference reads it automatically; `remove_spaces: true` or `false` in the inference config can override it. CER always ignores whitespace and is reported only as `cer`—there is no space-sensitive CER metric. The unchanged spaced normalisation run remains the gold input for the sibling `space-recognition` project.
+The choice is saved with each trained model. Inference reads it automatically, and evaluates it using the same configuration. `remove_spaces: true` or `false` in the inference config overrides it. There is no space-sensitive CER metric, i.e. `cer_with_space` vs `cer_without_space`, it simply all gets squashed into one.
 
 ## 2. Extract clips and make splits
+
+Stage 1 writes clips to `<data_root>/processed/splits/wav/` and writes local `metadata.csv` and `skip_metadata.csv` logs. Stage 2 first creates the local 80/10/10 train, development, and test splits, then deterministically shuffles and caps each split at its configured duration target while retaining the final clip that crosses the target. A null target keeps the complete split. The manifests and their configured and retained durations are recorded in `split_summary.json`.
 
 ```bash
 python scripts/prepare_asr_training.py --config config/prep/prepare.yaml
 ```
 
-Stage 1 writes clips to `<data_root>/processed/splits/wav/` and writes local `metadata.csv` and `skip_metadata.csv` logs. Stage 2 first creates the local 80/10/10 train, development, and test splits, then deterministically shuffles and caps each split at its configured duration target while retaining the final clip that crosses the target. A null target keeps the complete split. The manifests and their configured and retained durations are recorded in `split_summary.json`.
-
-Preparation outputs are immutable timestamped runs. For example, `logs_dir: logs/prep/<dataset>` writes to `logs/prep/<dataset>_<timestamp>/`; an existing directory is never reused. The command prints both its preparation run ID and resolved directory. Set `prep_dir` in a fine-tuning YAML to that exact directory; training then reads `metadata.csv` and `splits/{train,dev,test}.csv` from it. Any `metadata`, `train_csv`, `dev_csv`, or `test_csv` value explicitly set in the YAML overrides its derived path. For CER-filtered training, point `prep_dir` to the `cer90/` subdirectory. Inference and language-model configs still specify their own input files.
+Preparation outputs are immutable timestamped runs. For example, `logs_dir: logs/prep/<dataset>` writes to `logs/prep/<dataset>_<timestamp>/`; an existing directory is never reused. The command prints both its preparation run ID and resolved directory. Set `prep_dir` in a fine-tuning YAML to that exact directory; training then reads `metadata.csv` and `splits/{train,dev,test}.csv` from it. Any `metadata`, `train_csv`, `dev_csv`, or `test_csv` value explicitly set in the YAML overrides its derived path.
 
 Stages can be selected independently:
 
@@ -89,7 +89,7 @@ python -m src.finetune.train_asr --config config/finetune/ctc/facebook/wav2vec2-
 python -m src.finetune.train_asr --config config/finetune/ctc/facebook/wav2vec2-xls-r-1b.yaml
 ```
 
-The supported configurations are MMS and XLS-R (CTC), IPA-Whisper Base and Whisper Large-v3 (Whisper Seq2Seq), and Granite 4.0 Speech (multimodal LoRA). Large-v3 and Granite default to BF16 LoRA with gradient checkpointing. Granite uses its required `<|audio|>` chat prompt and multimodal processor rather than the Whisper collator. Allosaurus experiments are retired and retained only beneath `legacy/`; they are not accepted by the active dispatcher.
+The supported configurations can be found at `src/finetune/asr_config.py`, however, this is just a simple check. The project explicitly supports the models listed in `asr_config.py`; other models may be compatible, but they must be added and validated before this training workflow accepts them.
 
 `facebook/wav2vec2-xls-r-1b` illustrates how to assess a future CTC checkpoint: it is a candidate because it uses the Wav2Vec2/XLS-R architecture expected by the CTC trainer. Inspect the Hugging Face configuration to confirm `model_type: wav2vec2`, then verify that its feature extractor and `AutoModelForCTC` load successfully with the project-generated vocabulary. A base XLS-R checkpoint need not include a project-specific CTC head because fine-tuning replaces or initializes that head for the vocabulary. Once the load check succeeds, add the model ID to the dispatcher's explicit supported-model list and run `--validate-only`; the current validator rejects unregistered model IDs before it performs its architecture check.
 
@@ -97,7 +97,7 @@ Training reads local split manifests and external clips. All checkpoints and mod
 
 ### Run several training configurations sequentially
 
-List the training YAMLs you want to compare in a queue file. The queue runner validates every configuration before starting the first job, then launches each trainer in a separate Python process. CTC is a training objective/backend; MMS and XLS-R are two different pretrained models that use it. Every queued model starts independently from the checkpoint named in its own training YAML—weights do not carry from one job to the next.
+List the training YAMLs you want to compare in a queue file. The queue runner validates every configuration before starting the first job, then launches each trainer in a separate Python process. CTC is a training objective/backend; MMS and XLS-R are two different pretrained models that use it. Every queued model starts independently from the checkpoint named in its own training YAML -- weights do not carry from one job to the next.
 
 The included normalisation comparison queue is an example with MMS CTC, XLS-R CTC, and IPA-Whisper Base. Adapt its job list and training YAMLs for your datasets and supported models. A full run is expensive, so prepare the manifests and validate or smoke test the queue first:
 
@@ -119,7 +119,7 @@ python -m src.finetune.train_queue --resume logs/queues/normalisation_model_comp
 
 #### Worked example: 45-model normalisation comparison
 
-The comparison configuration defines 45 language–edition–model combinations across Japhug, Yonghe-Qiang, and Yongning-Na. The training queue selects which of those jobs to run. The five completed editions are `unnormalised`, `tones`, `map-chars`, `brackets`, and `full`; the models are MMS CTC, XLS-R CTC, and IPA-Whisper Base. Preparation is intentionally per language-edition: every config extracts only the selected tier, discards texts blanked by that edition, and creates its own deterministic utterance-level 80/10/10 splits. Japhug and Yonghe-Qiang manifests are then capped at approximately 2 hours of training audio and 12 minutes each of development and test audio; Yongning-Na keeps its complete split. Different utterances from one recording may occur in different splits; individual audio clips never overlap.
+The comparison configuration defines 45 language–edition–model combinations across Japhug, Yonghe-Qiang, and Yongning-Na. The training queue selects which of those jobs to run. The five completed editions are `unnormalised`, `tones`, `map-chars`, `brackets`, and `full`; the models are MMS CTC, XLS-R CTC, and IPA-Whisper Base. Preparation is intentionally per language-edition: every config extracts only the selected tier, discards texts blanked by that edition, and creates its own deterministic utterance-level 80/10/10 splits. All language manifests are then capped at approximately 2 hours of training audio and 12 minutes each of development and test audio.
 
 All models that consume a language-edition manifest use the same capped, deterministic rows. Duration limits belong only in preparation configuration; no model-specific cap is added to CTC, Whisper, or Granite fine-tuning YAMLs.
 
@@ -145,15 +145,13 @@ The production queue continues after a failed job and records every terminal sta
 
 Comparison preparation inserts the shared run ID immediately below `logs/prep/comparison/`, giving `logs/prep/comparison/<timestamp>/<language>/<edition>/`. Reusing a timestamp for the same language-edition is rejected rather than overwritten.
 
-All training backends write timestamped runs beneath a short model-family directory such as `<data_root>/processed/asr/mms/`, `asr/xlsr/`, or `asr/ipa-whisper-base/`. Backend, `comparison`, and normalization-edition wrapper directories are not used. Every new run includes a `NOTE.md` describing its base model, backend, source configuration, manifests, text policy, and training schedule; use that note to distinguish normalization editions within each model-family directory.
+All training backends write timestamped runs beneath a short model-family directory such as `<data_root>/processed/asr/mms/`, `asr/xlsr/`, or `asr/ipa-whisper-base/`. Backend, `comparison`, and normalisation-edition wrapper directories are not used. Every new run includes a `NOTE.md` describing its base model, backend, source configuration, manifests, text policy, and training schedule; use that note to distinguish normalisation editions within each model-family directory.
 
 ## 4. Build KenLM outside the repository
 
-Clone and compile KenLM at the exact revision used by the Python binding. The
-default `kenlm_path` is `~/projects/download-projects/kenlm/build/bin`:
+Clone and compile KenLM at the exact revision used by the Python binding. The default `kenlm_path` is `~/projects/download-projects/kenlm/build/bin`:
 
 ```bash
-cd ~/projects/download-projects
 git clone https://github.com/kpu/kenlm.git
 cd kenlm
 git checkout 4cb443e60b7bf2c0ddf3c745378f76cb59e254e5
@@ -175,7 +173,7 @@ otherwise CTC uses greedy decoding. Silero VAD is not part of this workflow.
 
 ## 5. Inference and evaluation
 
-Replace `<run>` placeholders in the relevant YAML with the selected model or inference run, then execute:
+Replace the relevant information from the YAML files with the selected model or inference run that you are working with. Then execute:
 
 ```bash
 python -m src.inference.transcribe --config config/inference/inference.yaml
@@ -189,7 +187,7 @@ Inference output remains with the external model data. Evaluation summaries and 
 
 The inference queue accepts a list of CTC or Whisper model configs. Each config supplies a local checkpoint or pinned Hugging Face model, its train, development, and test manifests, audio root, text policy, and saved test CER. Copy and adapt the supplied queue and job YAMLs to compare other supported models or datasets.
 
-The included `config/inference/comparison/queue.yaml` is a worked example with 45 saved checkpoints: 40 pinned to private Hugging Face commits and five stored locally. Run a queue on a GPU machine with the project environment installed; private Hub models require access (`hf auth login`). The commands below use this example queue:
+The included `config/inference/comparison/queue.yaml` is a worked example with 45 saved checkpoints. Run a queue on a GPU machine with the project environment installed; private Hub models require access (`hf auth login`). The commands below use this example queue:
 
 ```bash
 # Check model access, manifests, and audio without transcribing.
@@ -205,12 +203,4 @@ python -m src.inference.transcribe_queue --config config/inference/comparison/qu
 python -m src.inference.transcribe_queue --resume logs/evaluation/comparison_inference/<run-id>
 ```
 
-Every invocation creates a timestamped directory beneath `logs/evaluation/comparison_inference/`. It contains `queue_state.json`, per-split predictions and logs, and `summary.csv` with train, dev, test, pooled held-out, and all-split mean CER. The held-out gap is `(pooled dev+test CER - train CER) × 100` percentage points. The summary also shows the saved test CER and rerun difference. `--limit` writes `partial_summary.csv` instead; it never produces a full-run summary. A failed split remains visible in the state file and is rerun from its start on resume. Scoring matches training: mean per-utterance CER, punctuation and whitespace ignored, empty references skipped. A model enters the summary only after all expected rows in all three splits have predictions.
-
-## CER-filtered manifests
-
-The optional filtering helper reads imported scored transcriptions from a configuration file and creates a new `logs/prep/<language>_<timestamp>/` run containing the filtered metadata, removed rows, split files, summary, and a note explaining that the noisiest 10% was removed:
-
-```bash
-python src/data/minus_10_percent.py --config config/minus_10_percent/cer90.yaml
-```
+Every invocation creates a timestamped directory beneath `logs/evaluation/comparison_inference/`. It contains `queue_state.json`, per-split predictions and logs, and `summary.csv` with one row per completed model. Its `train_cer`, `dev_cer`, and `test_cer` columns are mean CER for each split; `dev_test_cer` pools the development and test utterances, and `train_dev_test_cer` pools all three splits. `saved_test_cer` is the test CER from the original training run, while `test_cer` is measured again by this inference run. `dev_test_minus_train_cer` and `test_minus_saved_test_cer` are unscaled decimal differences: for example, `0.03` means a CER difference of `0.03` (three percentage points). Pooled means are weighted by the number of scored utterances. `--limit` writes `partial_summary.csv` instead; it never produces a full-run summary. A failed split remains visible in the state file and is rerun from its start on resume. Scoring matches training: mean per-utterance CER, punctuation and whitespace ignored, empty references skipped. A model enters the summary only after all expected rows in all three splits have predictions. Per-utterance CER values remain in each split's `preds_scored.csv`.
