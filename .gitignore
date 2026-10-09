@@ -7,6 +7,8 @@ migrate_completed_queue_runs.py
 # Heavy audio, model checkpoints, and LM artifacts belong under data_root.
 config/finetune/comparison/
 config/prep/comparison/
+config/inference/comparison/
+
 logs/*
 
 tests/*
