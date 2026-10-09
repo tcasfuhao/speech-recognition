@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from src.finetune.asr_config import load_config, validate_config, write_validation_report
+from src.finetune.terminal_log import TerminalLog
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
