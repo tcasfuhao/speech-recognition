@@ -244,32 +244,60 @@ def _completed_validation_report(directory: Path, before: dict[Path, int]) -> st
 
 def _run_child(command: list[str], log_path: Path) -> int:
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as log:
+    with log_path.open("a+", encoding="utf-8") as log:
         log.write(f"\n[{_now()}] {' '.join(command)}\n")
         log.flush()
-        child = subprocess.Popen(
-            command,
-            cwd=PROJECT_ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
+        renderer = TerminalLog(log, snapshots=not sys.stdout.isatty())
+        master, slave = pty.openpty()
+        columns, lines = shutil.get_terminal_size(fallback=(100, 24))
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", lines, columns, 0, 0))
         try:
-            assert child.stdout is not None
-            for line in child.stdout:
-                print(line, end="", flush=True)
-                log.write(line)
-                log.flush()
-            return child.wait()
-        except KeyboardInterrupt:
-            child.terminate()
+            child = subprocess.Popen(
+                command,
+                cwd=PROJECT_ROOT,
+                stdin=subprocess.DEVNULL,
+                stdout=slave,
+                stderr=slave,
+                start_new_session=True,
+            )
+            os.close(slave)
+            slave = -1
+            decoder = codecs.getincrementaldecoder("utf-8")("replace")
             try:
-                child.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                child.kill()
-                child.wait()
-            raise
+                while True:
+                    try:
+                        data = os.read(master, 65536)
+                    except OSError as exc:
+                        if exc.errno == errno.EIO:
+                            break  # Linux PTYs report EIO after the slave closes.
+                        raise
+                    if not data:
+                        break
+                    decoded = decoder.decode(data)
+                    if sys.stdout.isatty():
+                        if hasattr(sys.stdout, "buffer"):
+                            sys.stdout.buffer.write(data)
+                            sys.stdout.buffer.flush()
+                        else:
+                            sys.stdout.write(decoded)
+                            sys.stdout.flush()
+                    renderer.feed(decoded)
+                renderer.feed(decoder.decode(b"", final=True))
+                return child.wait()
+            except KeyboardInterrupt:
+                child.terminate()
+                try:
+                    child.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait()
+                raise
+            finally:
+                renderer.finish()
+        finally:
+            os.close(master)
+            if slave != -1:
+                os.close(slave)
 
 
 def run_state(state: dict[str, Any], run_dir: Path, *, continue_on_error: bool = False) -> int:
