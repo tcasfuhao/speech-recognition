@@ -32,31 +32,14 @@ def main():
     ap.add_argument("--model_id_or_path", type=str, help="HF model id or path")
 
     ap.add_argument("--metadata", type=str, help="Path to metadata.csv")
-    ap.add_argument(
-        "--metadata_delimiter", type=str, default=",",
-        help="Delimiter for metadata file (default: ',')"
-    )
-    ap.add_argument(
-        "--utt_root", type=str, default=None,
-        help="Optional root to prepend to relative paths"
-    )
-    ap.add_argument(
-        "--limit", type=int, default=0, help="Optional limit for smoke test"
-    )
-
+    ap.add_argument("--metadata_delimiter", type=str, default=",", help="Delimiter for metadata file (default: ',')")
+    ap.add_argument("--utt_root", type=str, default=None, help="Optional root to prepend to relative paths")
+    ap.add_argument("--limit", type=int, default=0, help="Optional limit for smoke test")
     ap.add_argument("--out_dir", help="Output run directory")
-
-    ap.add_argument(
-        "--lm_path", type=str, default=None, help="Path to KenLM binary"
-    )
+    ap.add_argument("--lm_path", type=str, default=None, help="Path to KenLM binary")
     ap.add_argument("--lm_weight", type=float, default=0.5, help="LM weight")
     ap.add_argument("--beam_width", type=int, default=50)
-    ap.add_argument(
-        "--remove_spaces",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help="Override the saved model text policy (default: read it from the model)",
-    )
+    ap.add_argument("--remove_spaces", action=argparse.BooleanOptionalAction, default=None, help="Override the saved model text policy (default: read it from the model)",)
 
     args = ap.parse_args()
     cli_remove_spaces = args.remove_spaces
