@@ -1,5 +1,7 @@
 # Model
-model_id_or_path: ~/projects/my-projects/asr-models/language-downloads/yongning-na_01/doreco_yong1270_core_v2.0/processed/asr/xlsr/wav2vec2-xls-r-1b_20260930_122211/best
+# model_id_or_path: ~/projects/my-projects/asr-models/language-downloads/yongning-na_01/doreco_yong1270_core_v2.0/processed/asr/xlsr/wav2vec2-xls-r-1b_20260930_122211/best
+model_id_or_path: facebook/wav2vec2-xls-r-1b
+
 # null reads the policy saved with the model; true/false explicitly overrides it.
 remove_spaces: null
 
