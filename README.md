@@ -184,6 +184,26 @@ python -m src.evaluation.plot_train_log --config config/evaluation/plot_train_lo
 ```
 
 Inference output remains with the external model data. Evaluation summaries and plots are written under this repository's `logs/evaluation/` directory.
+ 
+### 45-model comparison inference
+
+`config/inference/comparison/queue.yaml` lists the 45 saved comparison checkpoints. Each model config points to its original capped train, development, and test manifests. Forty checkpoints are pinned to private Hugging Face commits; five Yongning-Na checkpoints use local `best/` directories. Run this on a GPU machine with the project environment installed and private Hub access (`hf auth login`).
+
+```bash
+# Check model access, manifests, and audio without transcribing.
+python -m src.inference.transcribe_queue --config config/inference/comparison/queue.yaml --validate-only
+
+# Pilot one complete model, including all three splits, and compare its rerun test CER.
+python -m src.inference.transcribe_queue --config config/inference/comparison/queue.yaml --job japhug-unnormalised-mms-ctc
+
+# Evaluate all 45 models. An independent one-clip-per-split check can use --limit 1.
+python -m src.inference.transcribe_queue --config config/inference/comparison/queue.yaml
+
+# Continue a failed or interrupted run, skipping completed splits.
+python -m src.inference.transcribe_queue --resume logs/evaluation/comparison_inference/<run-id>
+```
+
+Every invocation creates a timestamped directory beneath `logs/evaluation/comparison_inference/`. It contains `queue_state.json`, per-split predictions and logs, and `summary.csv` with train, dev, test, pooled held-out, and all-split mean CER. The held-out gap is `(pooled dev+test CER - train CER) × 100` percentage points. The summary also shows the saved test CER and rerun difference. `--limit` writes `partial_summary.csv` instead; it never produces a full-run summary. A failed split remains visible in the state file and is rerun from its start on resume. Scoring matches training: mean per-utterance CER, punctuation and whitespace ignored, empty references skipped. A model enters the summary only after all expected rows in all three splits have predictions.
 
 ## CER-filtered manifests
 
